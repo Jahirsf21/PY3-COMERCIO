@@ -12,7 +12,7 @@ import { format_price } from "@/lib/shared/utils"
 type AddToCartFormProps = {
   product: ProductHit
   selectedSize: string | null
-  availableQuantity: number
+  availableQuantity: number | null
   isSubmitting: boolean
   onSubmittingChange: (isSubmitting: boolean) => void
 }

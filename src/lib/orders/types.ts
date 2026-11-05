@@ -1,7 +1,8 @@
 import type { ProductImage } from "@/lib/catalog/types"
-import type { CartItem } from "@/lib/cart/types"
-import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/types"
-import type { CardPaymentData, Payment, PaymentResult } from "@/lib/payments/types"
+import type { CartItem, CartValidationResult } from "@/lib/cart/types"
+import type { BuyerInfo, CheckoutFormData, DeliveryInfo, DeliveryMethod, TermsAcceptance } from "@/lib/checkout/types"
+import type { CardPaymentData, Payment } from "@/lib/payments/types"
+import type { Store } from "@/lib/stores/types"
 
 /**
  * Estados disponibles para un pedido
@@ -37,19 +38,23 @@ export type OrderPagination = {
 /**
  * Datos del pedido, comprador, entrega y montos de la compra.
  * tax es el monto del IVA y shipping el costo de envío.
+ * termsAcceptance registra la aceptación de los Términos y Condiciones; todo pedido debe tenerla.
  */
 export type Order = {
   id: string
   order_number: number
   created_at: string
   buyer: BuyerInfo
-  delivery: DeliveryInfo
+  store: Store
+  delivery_method: DeliveryMethod
+  delivery: DeliveryInfo | null
   currency: string
   subtotal: number
   tax: number
   shipping: number
   total: number
   status: OrderStatus
+  termsAcceptance: TermsAcceptance
 }
 
 /**
@@ -61,14 +66,22 @@ export type OrderDetails = Order & {
   payment: Payment | null
 }
 
-/**
- * Resultado de recuperar los pedidos guardados en el navegador
- */
-export type OrdersStorageSnapshot = {
-  orders: OrderDetails[]
-  discarded_orders: boolean
-  storage_error: boolean
+export type PrepareOrderInput = CheckoutFormData & {
+  cart: CartItem[]
+  store: Store | null
 }
+
+export type PreparedOrderItem = Omit<OrderItem, "id" | "order_id">
+
+/** Datos verificados de una única sede, todavía sin identificadores ni pago. */
+export type PreparedOrder = Pick<Order, "buyer" | "store" | "delivery_method" | "delivery" | "currency" | "subtotal" | "tax" | "shipping" | "total" | "termsAcceptance"> & {
+  items: PreparedOrderItem[]
+}
+
+export type PrepareOrderResult =
+  | { status: "ready"; order: PreparedOrder }
+  | { status: "review"; message: string; validations: CartValidationResult[] }
+  | { status: "rejected" | "error"; message: string }
 
 /**
  * Estado visible y acciones permitidas para consultar un pedido.
@@ -81,30 +94,6 @@ export type OrderAvailability = {
   can_pay: boolean
   can_cancel: boolean
 }
-
-/**
- * Acciones disponibles para modificar los pedidos
- */
-export type OrderAction =
-  | {
-    type: "add"
-    order: OrderDetails
-  }
-  | {
-    type: "cancel"
-    order_id: string
-  }
-  | {
-    type: "start_payment"
-    order_id: string
-    payment: Payment
-  }
-  | {
-    type: "complete_payment"
-    order_id: string
-    payment_id: string
-    result: PaymentResult
-  }
 
 /**
  * Resultado de pagar un pedido.
@@ -128,14 +117,11 @@ export type PayOrderResult =
  */
 export type OrdersContextValue = {
   orders: OrderDetails[]
-  is_creating_order: boolean
   storage_error: boolean
-  notice: string | null
   unsaved_order_ids: string[]
-  dismiss_notice: () => void
-  retry_save_orders: () => Promise<boolean>
+  retry_save_orders: () => boolean
   get_order: (order_id: string) => OrderDetails | undefined
-  create_order: (form_data: CheckoutFormData, cart: CartItem[]) => Promise<OrderDetails | null>
-  cancel_order: (order_id: string) => Promise<boolean>
+  create_order: (prepared_order: PreparedOrder) => OrderDetails | null
+  cancel_order: (order_id: string) => boolean
   pay_order: (order_id: string, card_data: CardPaymentData) => Promise<PayOrderResult>
 }

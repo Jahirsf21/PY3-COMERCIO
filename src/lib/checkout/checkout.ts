@@ -11,9 +11,11 @@ import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/t
 /**
  * Construye los valores iniciales del formulario de compra.
  * Selecciona Nacional como tipo de identificación y Costa Rica como país de entrega.
+ * La aceptación de los términos empieza desmarcada y nunca se marca automáticamente.
  * @returns Datos iniciales del formulario.
  *   buyer: información de identificación y contacto, con Nacional seleccionado y los demás campos vacíos.
  *   delivery: dirección de entrega, con Costa Rica seleccionado y los demás campos vacíos.
+ *   terms_accepted_at: null, porque los términos todavía no se han aceptado.
  */
 export function create_checkout_form_data(): CheckoutFormData {
   return {
@@ -26,6 +28,7 @@ export function create_checkout_form_data(): CheckoutFormData {
       phone_number: "",
       alternative_phone_number: "",
     },
+    delivery_method: null,
     delivery: {
       country: "Costa Rica",
       province: "",
@@ -35,6 +38,7 @@ export function create_checkout_form_data(): CheckoutFormData {
       postal_code: "",
       additional_information: "",
     },
+    terms_accepted_at: null,
   }
 }
 
@@ -42,12 +46,21 @@ export function create_checkout_form_data(): CheckoutFormData {
  * Valida campo por campo los datos guardados del formulario de compra.
  * Usa los valores iniciales para los campos ausentes o con un tipo incorrecto.
  * Conserva solo los dígitos de la identificación, los teléfonos y el código postal, y limita su longitud.
+ * Recupera la aceptación de los términos solo si es una fecha ISO válida, para conservar la casilla marcada en el borrador.
  * @param stored_data Datos guardados sin validar.
  * @returns Datos del formulario validados.
  */
 function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
   const form_data = create_checkout_form_data()
   if (!stored_data || typeof stored_data !== "object" || Array.isArray(stored_data)) return form_data
+
+  if ("delivery_method" in stored_data && (stored_data.delivery_method === "SHIPPING" || stored_data.delivery_method === "PICKUP")) {
+    form_data.delivery_method = stored_data.delivery_method
+  }
+
+  if ("terms_accepted_at" in stored_data && is_valid_terms_date(stored_data.terms_accepted_at)) {
+    form_data.terms_accepted_at = stored_data.terms_accepted_at
+  }
 
   if ("buyer" in stored_data && stored_data.buyer && typeof stored_data.buyer === "object" && !Array.isArray(stored_data.buyer)) {
     const buyer = stored_data.buyer
@@ -195,6 +208,25 @@ export function validate_buyer_fields(buyer: BuyerInfo): Partial<Record<keyof Bu
     if (!validation_result.valid) field_errors[field_name as keyof BuyerInfo] = validation_result.error
   }
   return field_errors
+}
+
+/**
+ * Comprueba que un valor sea una fecha válida para registrar la aceptación de los términos.
+ * @param value Valor sin validar.
+ * @returns true si es un texto que representa una fecha válida.
+ */
+export function is_valid_terms_date(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value))
+}
+
+/**
+ * Valida que la persona haya aceptado los Términos y Condiciones y la Política de Privacidad.
+ * @param terms_accepted_at Fecha ISO en que se marcó la casilla, o null si está desmarcada.
+ * @returns Mensaje de error si la casilla no está marcada; undefined si los términos fueron aceptados.
+ */
+export function validate_terms_acceptance(terms_accepted_at: string | null): string | undefined {
+  return is_valid_terms_date(terms_accepted_at) ? undefined
+    : "Debe aceptar los Términos y Condiciones y la Política de Privacidad para continuar."
 }
 
 /**

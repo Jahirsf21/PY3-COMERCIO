@@ -40,9 +40,6 @@ export function FilterPanel() {
           }
         />
       </FilterSection>
-      <FilterSection title="Provincias">
-        <RefinementFilter attribute="provinces" />
-      </FilterSection>
     </div>
   );
 }

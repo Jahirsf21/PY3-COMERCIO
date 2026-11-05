@@ -23,11 +23,10 @@ export type ProductImage = {
 }
 
 /**
- * Stock de una talla concreta
+ * Stock original de una talla concreta, sin reservas ni disponibilidad calculada.
  */
 export type StockBySize = {
   stock_quantity: number
-  reserved_quantity: number
 }
 
 /**
@@ -37,9 +36,6 @@ export type StockByLocation = {
   province: string
   locale_name: string
   sizes: Record<string, StockBySize>
-  stock_quantity: number
-  reserved_quantity: number
-  available_quantity: number
 }
 
 /**
@@ -77,17 +73,10 @@ export type ProductRecord = {
   b2b_price: number
   in_stock_b2c: boolean
   in_stock_b2b: boolean
-  total_stock_quantity: number
-  b2c_stock_quantity: number
-  b2c_reserved_quantity: number
-  b2c_available_quantity: number
   b2c_min_order_quantity: number
   b2c_max_order_quantity: number
   b2c_step_quantity: number
   b2c_stock_by_location: StockByLocation[]
-  b2b_stock_quantity: number
-  b2b_reserved_quantity: number
-  b2b_available_quantity: number
   b2b_min_order_quantity: number
   b2b_max_order_quantity: number
   b2b_step_quantity: number

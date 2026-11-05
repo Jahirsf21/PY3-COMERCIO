@@ -3,6 +3,7 @@ import type { SubmitEvent } from "react"
 import { CreditCardIcon, LoaderCircleIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FieldGroup } from "@/components/ui/field"
+import { PolicyLink } from "@/components/policy-link"
 import { CheckoutInputField } from "@/features/checkout/components/CheckoutInputField"
 import { get_order_payment_block } from "@/lib/orders/orders"
 import { useOrders } from "@/lib/orders/ordersContext"
@@ -198,6 +199,11 @@ export function PaymentForm({ order, on_result, on_error }: PaymentFormProps) {
           {is_processing && <LoaderCircleIcon aria-hidden="true" className="size-4 motion-safe:animate-spin" />}
           {is_processing ? "Procesando pago…" : `${order.payment ? "Reintentar pago" : "Pagar"} ${format_price(order.total, order.currency)}`}
         </Button>
+        {/* Aviso informativo: los términos ya se aceptaron al generar la orden, por eso no hay otra casilla. */}
+        <p className="mt-3 text-sm text-muted-foreground">
+          Al pagar, su compra queda sujeta a los <PolicyLink to="/politicas-y-ayuda#terminos-y-condiciones">Términos y Condiciones</PolicyLink> que
+          aceptó. Cambios y devoluciones hasta 30 días después de la entrega (<PolicyLink to="/politicas-y-ayuda#politica-de-devoluciones">ver política</PolicyLink>).
+        </p>
       </form>
     </section>
   )

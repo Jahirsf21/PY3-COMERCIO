@@ -63,15 +63,6 @@ export type CartSuggestionsResult = {
 }
 
 /**
- * Resultado de recuperar el carrito guardado en el navegador
- */
-export type CartStorageSnapshot = {
-  cart: CartItem[]
-  discarded_items: boolean
-  storage_error: boolean
-}
-
-/**
  * Estado de validación de una línea del carrito
  */
 export type CartItemValidation = {
@@ -104,16 +95,6 @@ export type CartAction =
     limits: CartQuantityLimits
   }
   | {
-    type: "increment"
-    item_id: string
-    limits: CartQuantityLimits
-  }
-  | {
-    type: "decrement"
-    item_id: string
-    limits: CartQuantityLimits
-  }
-  | {
     type: "remove"
     item_id: string
   }
@@ -130,6 +111,7 @@ export type CartAction =
  */
 export type CartContextValue = {
   cart: CartItem[]
+  get_cart: () => CartItem[]
   subtotal: number
   shipping: number
   tax: number
@@ -143,7 +125,6 @@ export type CartContextValue = {
   revalidate_cart: () => void
   dismiss_notice: () => void
   add_to_cart: (product: CartProduct, selected_size: string, quantity?: number) => Promise<boolean>
-  set_quantity: (item_id: string, quantity: number) => Promise<void>
   increment_item: (item_id: string) => Promise<boolean>
   decrement_item: (item_id: string) => Promise<boolean>
   remove_item: (item_id: string) => void

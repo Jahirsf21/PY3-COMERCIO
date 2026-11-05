@@ -3,7 +3,7 @@ import { CircleCheckIcon } from "lucide-react"
 import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrderSummary"
 import { OrderCustomerInfo } from "@/features/orders/components/OrderCustomerInfo"
 import { OrderProducts } from "@/features/orders/components/OrderProducts"
-import { format_order_date } from "@/lib/orders/orders"
+import { format_order_date, format_terms_acceptance_date } from "@/lib/orders/orders"
 import type { OrderDetails } from "@/lib/orders/types"
 
 type PaymentConfirmationProps = {
@@ -14,6 +14,7 @@ type PaymentConfirmationProps = {
 /**
  * Presenta una compra confirmada en una sola columna con la aprobación centrada.
  * Muestra primero los productos y montos, y después los datos del cliente y la entrega guardados en la orden.
+ * Incluye la fecha de aceptación de los términos con el formato DD/MM/AAAA.
  * @param props Propiedades de la confirmación.
  * @param props.order Orden cuyo pago aprobado ya se guardó correctamente.
  * @param props.show_order_link Indica si se ofrece un acceso al detalle; por defecto, true.
@@ -29,6 +30,10 @@ export function PaymentConfirmation({ order, show_order_link = true }: PaymentCo
         <p className="mt-2 text-sm text-muted-foreground">Orden #{order.order_number}</p>
         <p className="mt-1 text-sm text-muted-foreground"><time dateTime={order.created_at}>{format_order_date(order.created_at)}</time></p>
         <p className="mt-1 text-sm text-muted-foreground">Tu compra se completó correctamente.</p>
+        {/* La fecha se lee de la aceptación registrada en la orden. */}
+        <p className="mt-1 text-sm text-muted-foreground">
+          Términos aceptados el <time dateTime={order.termsAcceptance.acceptedAt}>{format_terms_acceptance_date(order.termsAcceptance.acceptedAt)}</time>
+        </p>
       </section>
 
       <OrderProducts key={order.id} order={order} />

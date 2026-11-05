@@ -1,8 +1,9 @@
-import type { CartProduct, CartItem, CartAction, CartQuantityLimits, CartStorageSnapshot, CartValidationResult, CartPagination } from "@/lib/cart/types"
+import type { CartProduct, CartItem, CartAction, CartQuantityLimits, CartValidationResult, CartPagination } from "@/lib/cart/types"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import { get_suggestions } from "@/lib/shared/suggestions"
 import { get_product_quantity_limits, get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import type { Store } from "@/lib/stores/types"
 
 type QuantityProduct = Pick<CartProduct, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">
 
@@ -13,14 +14,10 @@ type QuantityProduct = Pick<CartProduct, "b2c_min_order_quantity" | "b2c_max_ord
  * - Reconstruye el id a partir del SKU y la talla mediante get_cart_item_id().
  * - Suma las cantidades de las líneas repetidas que tienen el mismo producto y moneda.
  * @param cart_data Datos del carrito sin validar.
- * @returns Carrito validado.
- *   cart: líneas válidas.
- *   discarded_items: true si se descartó alguna línea o los datos no son un arreglo.
- *   storage_error: siempre false.
+ * @returns Líneas válidas del carrito.
  */
-export function parse_cart_data(cart_data: unknown): CartStorageSnapshot {
-  const storage_snapshot: CartStorageSnapshot = { cart: [], discarded_items: false, storage_error: false }
-  if (!Array.isArray(cart_data)) return { ...storage_snapshot, discarded_items: true }
+export function parse_cart_data(cart_data: unknown): CartItem[] {
+  if (!Array.isArray(cart_data)) return []
   const items_by_id = new Map<string, CartItem>()
 
   for (const raw_item of cart_data) {
@@ -28,7 +25,6 @@ export function parse_cart_data(cart_data: unknown): CartStorageSnapshot {
       !is_nonempty_string(raw_item.selected_size) || !is_nonempty_string(raw_item.title) || !is_valid_image(raw_item.image) ||
       !is_valid_currency(raw_item.currency) || !is_positive_integer(raw_item.quantity) ||
       !is_valid_price(raw_item.unit_price, raw_item.quantity)) {
-      storage_snapshot.discarded_items = true
       continue
     }
 
@@ -48,7 +44,6 @@ export function parse_cart_data(cart_data: unknown): CartStorageSnapshot {
       const combined_quantity = existing_item.quantity + item.quantity
       if (existing_item.product_id !== item.product_id || existing_item.currency !== item.currency ||
         !Number.isSafeInteger(combined_quantity) || !is_valid_price(existing_item.unit_price, combined_quantity)) {
-        storage_snapshot.discarded_items = true
         continue
       }
       items_by_id.set(item.id, { ...existing_item, quantity: combined_quantity })
@@ -56,21 +51,15 @@ export function parse_cart_data(cart_data: unknown): CartStorageSnapshot {
       items_by_id.set(item.id, item)
     }
   }
-  storage_snapshot.cart = [...items_by_id.values()]
-  return storage_snapshot
+  return [...items_by_id.values()]
 }
 
 /**
  * Obtiene el carrito guardado en localStorage y lo valida mediante parse_cart_data().
- * @returns Carrito recuperado.
- *   cart: líneas válidas; vacío si la clave no existe o no se puede leer.
- *   discarded_items: true si el JSON es inválido o contiene líneas descartadas.
- *   storage_error: true si el navegador impide leer localStorage.
+ * @returns Líneas válidas, o un arreglo vacío si no se pueden recuperar.
  */
-export function get_stored_cart(): CartStorageSnapshot {
-  const stored_cart = get_stored_json("space-shop-cart")
-  if (stored_cart.status === "ok") return parse_cart_data(stored_cart.data)
-  return { cart: [], discarded_items: stored_cart.status === "invalid_json", storage_error: stored_cart.status === "storage_error" }
+export function get_stored_cart(): CartItem[] {
+  return parse_cart_data(get_stored_json("space-shop-cart"))
 }
 
 /**
@@ -172,7 +161,7 @@ export function refresh_cart_items(state: CartItem[], validation_results: CartVa
  * @param available_quantity Stock disponible de la talla seleccionada.
  * @returns Límites de cantidad, o null si las reglas o el stock son inválidos.
  */
-export function get_cart_quantity_limits(product: QuantityProduct, available_quantity: number): CartQuantityLimits | null {
+export function get_cart_quantity_limits(product: QuantityProduct, available_quantity: number | null): CartQuantityLimits | null {
   return get_product_quantity_limits(product, available_quantity)
 }
 
@@ -365,10 +354,11 @@ export function get_cart_pagination(cart: CartItem[], requested_page = 1): CartP
  * Consulta hasta 20 productos sugeridos según las categorías de los productos del carrito.
  * Obtiene las categorías mediante facetas de Algolia y busca las sugerencias con get_suggestions().
  * @param product_ids Identificadores de los productos del carrito.
+ * @param selected_store Tienda en la que deben estar disponibles las sugerencias; null usa el mayor stock de una sede.
  * @returns Hasta 20 variantes sugeridas; vacío si no hay productos, categorías o sugerencias disponibles.
  * @throws Si falla una consulta a Algolia o su respuesta no contiene resultados válidos.
  */
-export async function get_cart_suggestions(product_ids: string[]): Promise<ProductHit[]> {
+export async function get_cart_suggestions(product_ids: string[], selected_store: Store | null = null): Promise<ProductHit[]> {
   const cart_product_ids = [...new Set(product_ids.filter(is_nonempty_string).map((product_id) => product_id.trim()))]
   if (cart_product_ids.length === 0) return []
   const cart_product_filters = cart_product_ids.map((product_id) => `product_id:${JSON.stringify(product_id)}`)
@@ -387,7 +377,7 @@ export async function get_cart_suggestions(product_ids: string[]): Promise<Produ
   if (!category_result || !("hits" in category_result) || !Array.isArray(category_result.hits)) throw new Error("Respuesta de categorías inválida.")
 
   const categories = Object.keys(category_result.facets?.categories ?? {})
-  return get_suggestions(categories, cart_product_ids)
+  return get_suggestions(categories, cart_product_ids, selected_store)
 }
 
 /**
@@ -469,32 +459,6 @@ export function set_cart_item_quantity(state: CartItem[], item_id: string, quant
 }
 
 /**
- * Aumenta un paso la cantidad de una línea del carrito.
- * @param state Estado actual del carrito.
- * @param item_id Identificador de la línea.
- * @param limits Límites de cantidad de la línea.
- * @returns Carrito actualizado, o el mismo estado si la línea no existe o la cantidad resultante es inválida.
- */
-export function increment_cart_item(state: CartItem[], item_id: string, limits: CartQuantityLimits): CartItem[] {
-  const item = state.find((cart_item) => cart_item.id === item_id)
-  if (!item || !can_increment_item(item, limits)) return state
-  return set_cart_item_quantity(state, item_id, item.quantity + limits.step_quantity, limits)
-}
-
-/**
- * Reduce un paso la cantidad de una línea del carrito.
- * @param state Estado actual del carrito.
- * @param item_id Identificador de la línea.
- * @param limits Límites de cantidad de la línea.
- * @returns Carrito actualizado, o el mismo estado si la línea no existe o la cantidad resultante es inválida.
- */
-export function decrement_cart_item(state: CartItem[], item_id: string, limits: CartQuantityLimits): CartItem[] {
-  const item = state.find((cart_item) => cart_item.id === item_id)
-  if (!item || !can_decrement_item(item, limits)) return state
-  return set_cart_item_quantity(state, item_id, item.quantity - limits.step_quantity, limits)
-}
-
-/**
  * Elimina una línea del carrito.
  * @param state Estado actual del carrito.
  * @param item_id Identificador de la línea.
@@ -502,14 +466,6 @@ export function decrement_cart_item(state: CartItem[], item_id: string, limits: 
  */
 export function remove_cart_item(state: CartItem[], item_id: string): CartItem[] {
   return state.filter((item) => item.id !== item_id)
-}
-
-/**
- * Vacía el carrito.
- * @returns Arreglo vacío.
- */
-export function clear_cart(): CartItem[] {
-  return []
 }
 
 /**
@@ -524,14 +480,10 @@ export function cart_reducer(state: CartItem[], action: CartAction): CartItem[] 
       return add_cart_item(state, action.item, action.limits)
     case "set_quantity":
       return set_cart_item_quantity(state, action.item_id, action.quantity, action.limits)
-    case "increment":
-      return increment_cart_item(state, action.item_id, action.limits)
-    case "decrement":
-      return decrement_cart_item(state, action.item_id, action.limits)
     case "remove":
       return remove_cart_item(state, action.item_id)
     case "clear":
-      return clear_cart()
+      return []
     case "refresh":
       return refresh_cart_items(state, action.results)
   }
