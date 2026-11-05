@@ -4,12 +4,13 @@ const app_id = import.meta.env.VITE_ALGOLIA_APPLICATION_ID;
 const search_api_key = import.meta.env.VITE_ALGOLIA_SEARCH_API_KEY;
 
 /**
- * Índices de Algolia para la búsqueda principal y el ordenamiento por precio.
+ * Índices de Algolia para la búsqueda principal, el ordenamiento por precio y los usuarios.
  */
 export const algolia_indices = {
   main: import.meta.env.VITE_ALGOLIA_MAIN_INDEX,
   priceDesc: import.meta.env.VITE_ALGOLIA_PRICE_DESC_INDEX,
   priceAsc: import.meta.env.VITE_ALGOLIA_PRICE_ASC_INDEX,
+  users: import.meta.env.VITE_ALGOLIA_USERS_INDEX,
 };
 
 if (!app_id)
