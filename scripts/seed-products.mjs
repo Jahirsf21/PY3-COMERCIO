@@ -124,7 +124,7 @@ async function get_records() {
  * Obtiene los records de get_records() y los sube al índice de Algolia definido en index_name.
  * @returns {Promise<void>}
  */
-async function seed_algolia() {
+async function seed_products() {
   const records = await get_records();
   await client.saveObjects({
     indexName: index_name,
@@ -135,7 +135,7 @@ async function seed_algolia() {
 /**
  * Ejecuta el seed y maneja errores
  */
-seed_algolia().catch((error) => {
-  console.error("Error al poblar el indice:", error);
+seed_products().catch((error) => {
+  console.error("Error al poblar el índice de productos:", error);
   process.exit(1);
 });
