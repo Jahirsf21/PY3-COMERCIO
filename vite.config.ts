@@ -11,5 +11,5 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src")
     },
   },
-  base: "/PY1-COMERCIO",
+  base: "/LAB4-COMERCIO",
 })

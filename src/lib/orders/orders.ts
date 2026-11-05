@@ -1,9 +1,79 @@
-import type { CartItem } from "@/lib/cart/types"
-import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/types"
-import type { OrderAction, OrderAvailability, OrderDetails, OrderItem, OrderPagination, OrderStatus, OrdersStorageSnapshot } from "@/lib/orders/types"
+import type { BuyerInfo, DeliveryInfo, TermsAcceptance } from "@/lib/checkout/types"
+import type { OrderAvailability, OrderDetails, OrderItem, OrderPagination, OrderStatus, PrepareOrderInput, PrepareOrderResult, PreparedOrder, PreparedOrderItem } from "@/lib/orders/types"
 import type { Payment, PaymentResult } from "@/lib/payments/types"
-import { get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_cart_total, get_item_subtotal } from "@/lib/cart/cart"
+import { get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_item_subtotal, parse_cart_data } from "@/lib/cart/cart"
+import { get_cart_validation } from "@/lib/catalog/catalog"
+import { is_valid_terms_date, validate_buyer_fields, validate_delivery_fields, validate_terms_acceptance } from "@/lib/checkout/checkout"
+import { get_store } from "@/lib/stores/stores"
 import { get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+
+/**
+ * Valida comprador, entrega, stock y precios de una sola sede, sin guardar ni cobrar.
+ * Exige dirección solo para envío; para retiro prepara dirección nula y costo de envío cero.
+ * Rechaza el pedido si no se aceptaron los términos y registra la aceptación con la fecha en que se marcó la casilla.
+ * Solicita revisar el carrito si cambian precios o cantidades permitidas.
+ * @param input Formulario con el nombre del comprador resuelto, carrito completo y tienda elegida.
+ * @returns Promesa con los datos preparados, una solicitud de revisión, un rechazo o un error de consulta.
+ */
+export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOrderResult> {
+  const buyer = { ...input.buyer }
+  const delivery = { ...input.delivery }
+  const delivery_method = input.delivery_method
+  const selected_store = get_store(input.store?.id ?? null)
+  if (!selected_store) return { status: "rejected", message: "Selecciona una tienda para el pedido." }
+  const store = { ...selected_store }
+  if (delivery_method !== "SHIPPING" && delivery_method !== "PICKUP") {
+    return { status: "rejected", message: "Selecciona envío o retiro para el pedido." }
+  }
+  const buyer_error = Object.values(validate_buyer_fields(buyer))[0]
+  if (buyer_error) return { status: "rejected", message: buyer_error }
+  if (delivery_method === "SHIPPING") {
+    const delivery_error = Object.values(validate_delivery_fields(delivery))[0]
+    if (delivery_error) return { status: "rejected", message: delivery_error }
+  }
+  const terms_error = validate_terms_acceptance(input.terms_accepted_at)
+  if (terms_error || !is_valid_terms_date(input.terms_accepted_at)) return { status: "rejected", message: terms_error ?? "" }
+  const terms_acceptance: TermsAcceptance = { accepted: true, acceptedAt: input.terms_accepted_at }
+  const cart = parse_cart_data(input.cart)
+  if (cart.length === 0 || cart.length !== input.cart.length) {
+    return { status: "rejected", message: "Revisa los productos y cantidades del carrito antes de preparar el pedido." }
+  }
+  if (new Set(cart.map((item) => item.currency)).size !== 1) {
+    return { status: "rejected", message: "Los productos del pedido deben tener una misma moneda." }
+  }
+  try {
+    const validations = await get_cart_validation(cart, store)
+    if (validations.some((validation) => validation.status === "error")) {
+      return { status: "error", message: "No pudimos comprobar todos los productos de la tienda. Intenta nuevamente." }
+    }
+    if (validations.some((validation) => validation.status !== "valid" ||
+      validation.item.unit_price !== validation.original_item.unit_price || validation.item.currency !== validation.original_item.currency)) {
+      return { status: "review", message: "El stock o los precios cambiaron. Actualiza y revisa el carrito antes de generar el pedido.", validations }
+    }
+    const checked_cart = validations.map((validation) => validation.item)
+    const subtotal = get_cart_subtotal(checked_cart)
+    const tax = get_cart_tax(checked_cart)
+    const shipping = delivery_method === "PICKUP" ? 0 : get_cart_shipping_cost(checked_cart)
+    const total = subtotal + tax + shipping
+    if (!is_valid_price(total)) return { status: "rejected", message: "Los montos del pedido superan el importe permitido." }
+    const items: PreparedOrderItem[] = checked_cart.map((item) => ({
+      product_id: item.product_id,
+      sku: item.sku,
+      selected_size: item.selected_size,
+      title: item.title,
+      image: { ...item.image },
+      unit_price: item.unit_price,
+      quantity: item.quantity,
+      subtotal: get_item_subtotal(item),
+    }))
+    return { status: "ready", order: {
+      buyer, store, delivery_method, delivery: delivery_method === "PICKUP" ? null : delivery,
+      currency: checked_cart[0].currency, subtotal, tax, shipping, total, items, termsAcceptance: terms_acceptance,
+    } }
+  } catch {
+    return { status: "error", message: "No pudimos comprobar los productos de la tienda. Intenta nuevamente." }
+  }
+}
 
 /**
  * Valida la información de la persona compradora de un pedido.
@@ -53,6 +123,17 @@ function parse_order_delivery(delivery: unknown): DeliveryInfo | null {
     postal_code: delivery.postal_code.trim(),
     additional_information: delivery.additional_information.trim(),
   }
+}
+
+/**
+ * Valida la aceptación de los términos de un pedido.
+ * Los pedidos sin una aceptación válida, como los guardados antes de exigirla, se descartan.
+ * @param terms_acceptance Aceptación sin validar.
+ * @returns Aceptación validada, o null si accepted no es true o acceptedAt no es una fecha válida.
+ */
+function parse_order_terms_acceptance(terms_acceptance: unknown): TermsAcceptance | null {
+  if (!is_record(terms_acceptance) || terms_acceptance.accepted !== true || !is_valid_terms_date(terms_acceptance.acceptedAt)) return null
+  return { accepted: true, acceptedAt: terms_acceptance.acceptedAt }
 }
 
 /**
@@ -115,17 +196,14 @@ function parse_order_payment(raw_payment: unknown, order: Pick<OrderDetails, "id
  * Por cada pedido:
  * - Valida el identificador, el número, la fecha, la moneda, los montos y el estado.
  * - Valida la persona compradora, la entrega y los productos mediante parse_order_buyer(), parse_order_delivery() y parse_order_item().
+ * - Valida la aceptación de los términos mediante parse_order_terms_acceptance().
  * - Valida que payment sea null o un pago válido según parse_order_payment(), y que su estado sea compatible con el pedido.
  * - Descarta los pedidos con un identificador o número repetido.
  * @param orders_data Datos de los pedidos sin validar.
- * @returns Pedidos validados.
- *   orders: pedidos válidos.
- *   discarded_orders: true si se descartó algún pedido o los datos no son un arreglo.
- *   storage_error: siempre false.
+ * @returns Pedidos con una estructura válida.
  */
-export function parse_orders_data(orders_data: unknown): OrdersStorageSnapshot {
-  const storage_snapshot: OrdersStorageSnapshot = { orders: [], discarded_orders: false, storage_error: false }
-  if (!Array.isArray(orders_data)) return { ...storage_snapshot, discarded_orders: true }
+export function parse_orders_data(orders_data: unknown): OrderDetails[] {
+  if (!Array.isArray(orders_data)) return []
   const orders_by_id = new Map<string, OrderDetails>()
   const order_numbers = new Set<number>()
 
@@ -134,22 +212,25 @@ export function parse_orders_data(orders_data: unknown): OrdersStorageSnapshot {
       typeof raw_order.created_at !== "string" || Number.isNaN(Date.parse(raw_order.created_at)) || !is_valid_currency(raw_order.currency) ||
       !is_valid_price(raw_order.subtotal) || !is_valid_price(raw_order.tax) || !is_valid_price(raw_order.shipping) || !is_valid_price(raw_order.total) ||
       (raw_order.status !== "PENDING" && raw_order.status !== "CONFIRMED" && raw_order.status !== "CANCELLED") ||
+      (raw_order.delivery_method !== "SHIPPING" && raw_order.delivery_method !== "PICKUP") ||
       !Array.isArray(raw_order.items) || raw_order.items.length === 0) {
-      storage_snapshot.discarded_orders = true
       continue
     }
 
     const order_id = raw_order.id.trim()
+    const store = is_record(raw_order.store) && typeof raw_order.store.id === "string" ? get_store(raw_order.store.id) : null
     const buyer = parse_order_buyer(raw_order.buyer)
-    const delivery = parse_order_delivery(raw_order.delivery)
+    const delivery = raw_order.delivery_method === "SHIPPING" ? parse_order_delivery(raw_order.delivery) : null
     const items = raw_order.items.map((raw_item) => parse_order_item(raw_item, order_id))
+    const terms_acceptance = parse_order_terms_acceptance(raw_order.termsAcceptance)
     const payment = raw_order.payment === null ? null : parse_order_payment(raw_order.payment, { id: order_id, total: raw_order.total, currency: raw_order.currency })
     const has_inconsistent_payment = (raw_order.status === "CONFIRMED" && payment?.status !== "APPROVE") ||
       (raw_order.status !== "CONFIRMED" && payment?.status === "APPROVE") ||
       (raw_order.status === "CANCELLED" && payment?.status === "PENDING")
-    if (!buyer || !delivery || items.some((item) => item === null) || (raw_order.payment !== null && !payment) ||
+    if (!store || !buyer || !terms_acceptance || (raw_order.delivery_method === "SHIPPING" && !delivery) ||
+      (raw_order.delivery_method === "PICKUP" && (raw_order.delivery !== null || raw_order.shipping !== 0)) ||
+      items.some((item) => item === null) || (raw_order.payment !== null && !payment) ||
       has_inconsistent_payment || orders_by_id.has(order_id) || order_numbers.has(raw_order.order_number)) {
-      storage_snapshot.discarded_orders = true
       continue
     }
 
@@ -158,6 +239,8 @@ export function parse_orders_data(orders_data: unknown): OrdersStorageSnapshot {
       order_number: raw_order.order_number,
       created_at: raw_order.created_at,
       buyer,
+      store: { ...store },
+      delivery_method: raw_order.delivery_method,
       delivery,
       currency: raw_order.currency,
       subtotal: raw_order.subtotal,
@@ -165,26 +248,21 @@ export function parse_orders_data(orders_data: unknown): OrdersStorageSnapshot {
       shipping: raw_order.shipping,
       total: raw_order.total,
       status: raw_order.status,
+      termsAcceptance: terms_acceptance,
       items: items.filter((item) => item !== null),
       payment,
     })
     order_numbers.add(raw_order.order_number)
   }
-  storage_snapshot.orders = [...orders_by_id.values()]
-  return storage_snapshot
+  return [...orders_by_id.values()]
 }
 
 /**
  * Obtiene los pedidos guardados en localStorage y los valida mediante parse_orders_data().
- * @returns Pedidos recuperados.
- *   orders: pedidos válidos; vacío si la clave no existe o no se puede leer.
- *   discarded_orders: true si el JSON es inválido o contiene pedidos descartados.
- *   storage_error: true si el navegador impide leer localStorage.
+ * @returns Pedidos válidos, o un arreglo vacío si no se pueden recuperar.
  */
-export function get_stored_orders(): OrdersStorageSnapshot {
-  const stored_orders = get_stored_json("space-shop-orders")
-  if (stored_orders.status === "ok") return parse_orders_data(stored_orders.data)
-  return { orders: [], discarded_orders: stored_orders.status === "invalid_json", storage_error: stored_orders.status === "storage_error" }
+export function get_stored_orders(): OrderDetails[] {
+  return parse_orders_data(get_stored_json("space-shop-orders"))
 }
 
 /**
@@ -197,60 +275,6 @@ export function save_orders(orders: OrderDetails[]): boolean {
 }
 
 /**
- * Ejecuta una operación bajo el bloqueo de escritura compartido por las pestañas de este origen.
- * Requiere Web Locks para no simular exclusión mediante lecturas y escrituras separadas de localStorage.
- * @param operation Operación de lectura, modificación y guardado.
- * @returns Resultado de la operación cuando se obtiene el bloqueo.
- * @throws Si el navegador no ofrece Web Locks o la operación falla.
- */
-export async function with_orders_lock<Result>(operation: () => Result): Promise<Result> {
-  if (!navigator.locks) throw new Error("El navegador no permite coordinar los pedidos.")
-  return navigator.locks.request("space-shop-orders", operation)
-}
-
-/**
- * Obtiene el bloqueo exclusivo de un pago y lo conserva hasta llamar a la función devuelta.
- * Las recuperaciones pueden esperar a que termine la simulación activa; un nuevo pago o cancelación no espera.
- * El navegador libera el bloqueo si se cierra o recarga la pestaña propietaria.
- * @param order_id Identificador del pedido.
- * @param wait Indica si debe esperar un bloqueo ocupado; por defecto, false.
- * @param signal Señal que permite cancelar una solicitud que todavía está esperando.
- * @returns Función para liberar el bloqueo, o null si no está disponible o se canceló la solicitud.
- * @throws Si el navegador no ofrece Web Locks.
- */
-export async function acquire_order_payment_lock(order_id: string, wait = false, signal?: AbortSignal): Promise<(() => void) | null> {
-  if (!navigator.locks) throw new Error("El navegador no permite coordinar los pagos.")
-  return new Promise((resolve) => {
-    const options: LockOptions = wait ? { signal } : { ifAvailable: true }
-    void navigator.locks.request(`space-shop-order-payment:${order_id}`, options, (lock) => {
-      if (!lock) {
-        resolve(null)
-        return
-      }
-      return new Promise<void>((release) => { resolve(release) })
-    }).catch(() => resolve(null))
-  })
-}
-
-/**
- * Combina los pedidos persistidos con los resultados locales que todavía no se pudieron guardar.
- * Solo conserva un resultado local si el almacenamiento mantiene pendiente el mismo intento.
- * No sobrescribe pedidos confirmados, cancelados, eliminados ni pagos reemplazados por otra pestaña.
- * @param stored_orders Pedidos leídos del almacenamiento.
- * @param local_orders Pedidos de esta pestaña.
- * @param unsaved_order_ids Pedidos con resultados locales pendientes de guardar.
- * @returns Pedidos actuales con los resultados locales que siguen vigentes.
- */
-export function merge_unsaved_orders(stored_orders: OrderDetails[], local_orders: OrderDetails[], unsaved_order_ids: string[]): OrderDetails[] {
-  const local_updates = new Map(local_orders.filter((order) => unsaved_order_ids.includes(order.id)).map((order) => [order.id, order]))
-  return stored_orders.map((order) => {
-    const local_order = local_updates.get(order.id)
-    if (!local_order || order.status !== "PENDING" || order.payment?.status !== "PENDING" || order.payment.id !== local_order.payment?.id) return order
-    return local_order
-  })
-}
-
-/**
  * Calcula el siguiente número consecutivo de pedido.
  * @param orders Pedidos existentes.
  * @returns Número mayor registrado más uno, o 1 si no hay pedidos.
@@ -260,12 +284,12 @@ export function get_next_order_number(orders: OrderDetails[]): number {
 }
 
 /**
- * Crea un producto de pedido a partir de una línea del carrito.
- * @param item Línea del carrito.
+ * Asigna identificadores a un producto ya verificado.
+ * @param item Producto preparado.
  * @param order_id Identificador del pedido.
- * @returns Producto del pedido con el subtotal calculado mediante get_item_subtotal().
+ * @returns Producto del pedido con el subtotal verificado.
  */
-export function create_order_item(item: CartItem, order_id: string): OrderItem {
+export function create_order_item(item: PreparedOrderItem, order_id: string): OrderItem {
   return {
     id: crypto.randomUUID(),
     order_id,
@@ -276,34 +300,38 @@ export function create_order_item(item: CartItem, order_id: string): OrderItem {
     image: { ...item.image },
     unit_price: item.unit_price,
     quantity: item.quantity,
-    subtotal: get_item_subtotal(item),
+    subtotal: item.subtotal,
   }
 }
 
 /**
- * Crea un pedido con estado PENDING a partir del formulario de compra y las líneas del carrito.
- * Calcula el subtotal, el impuesto, el envío y el total con las funciones del carrito.
- * @param form_data Información del comprador y la entrega.
- * @param cart Líneas del carrito.
+ * Crea un pedido PENDING con los datos verificados, sin recalcularlos desde otro carrito o sede.
+ * Copia la aceptación de los términos y nunca crea un pedido sin una aceptación válida.
+ * @param prepared_order Datos preparados.
  * @param order_number Número del pedido.
- * @returns Pedido creado sin pago, o null si el carrito está vacío o tiene más de una moneda.
+ * @returns Pedido creado sin pago, o null si no tiene productos, un consecutivo válido o la aceptación de los términos.
  */
-export function create_order(form_data: CheckoutFormData, cart: CartItem[], order_number: number): OrderDetails | null {
-  if (cart.length === 0 || new Set(cart.map((item) => item.currency)).size !== 1) return null
+export function create_order(prepared_order: PreparedOrder, order_number: number): OrderDetails | null {
+  if (prepared_order.items.length === 0 || !is_positive_integer(order_number)) return null
+  const terms_acceptance = parse_order_terms_acceptance(prepared_order.termsAcceptance)
+  if (!terms_acceptance) return null
   const order_id = crypto.randomUUID()
   return {
     id: order_id,
     order_number,
     created_at: new Date().toISOString(),
-    buyer: { ...form_data.buyer },
-    delivery: { ...form_data.delivery },
-    currency: cart[0].currency,
-    subtotal: get_cart_subtotal(cart),
-    tax: get_cart_tax(cart),
-    shipping: get_cart_shipping_cost(cart),
-    total: get_cart_total(cart),
+    buyer: { ...prepared_order.buyer },
+    store: { ...prepared_order.store },
+    delivery_method: prepared_order.delivery_method,
+    delivery: prepared_order.delivery ? { ...prepared_order.delivery } : null,
+    currency: prepared_order.currency,
+    subtotal: prepared_order.subtotal,
+    tax: prepared_order.tax,
+    shipping: prepared_order.shipping,
+    total: prepared_order.total,
     status: "PENDING",
-    items: cart.map((item) => create_order_item(item, order_id)),
+    termsAcceptance: terms_acceptance,
+    items: prepared_order.items.map((item) => create_order_item(item, order_id)),
     payment: null,
   }
 }
@@ -372,7 +400,7 @@ export function get_order_payment_block(order: OrderDetails): string | null {
 
 /**
  * Obtiene el estado visible y las acciones permitidas para un pedido y su resultado de pago vigente.
- * La persistencia y los bloqueos entre pestañas se vuelven a comprobar al ejecutar las acciones.
+ * Las acciones vuelven a comprobar el estado del pedido antes de modificarlo.
  * @param order Pedido que se desea consultar.
  * @param has_unsaved_result Indica si su resultado de pago todavía no se ha guardado; por defecto, false.
  * @returns Etiqueta del estado y disponibilidad de confirmación, procesamiento, pago y cancelación.
@@ -394,6 +422,16 @@ export function get_order_availability(order: OrderDetails, has_unsaved_result =
  */
 export function format_order_date(created_at: string): string {
   return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(created_at))
+}
+
+/**
+ * Formatea la fecha de aceptación de los términos como DD/MM/AAAA.
+ * Usa la zona horaria del navegador, igual que format_order_date().
+ * @param accepted_at Fecha ISO válida de la aceptación.
+ * @returns Fecha con día y mes de dos dígitos y año de cuatro dígitos.
+ */
+export function format_terms_acceptance_date(accepted_at: string): string {
+  return new Intl.DateTimeFormat("es-CR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(accepted_at))
 }
 
 /**
@@ -462,23 +500,4 @@ export function recover_interrupted_payments(orders: OrderDetails[]): OrderDetai
     const payment: Payment = { ...order.payment, status: "ERROR" }
     return { ...order, payment }
   })
-}
-
-/**
- * Aplica una acción a los pedidos mediante la función correspondiente.
- * @param state Estado actual de los pedidos.
- * @param action Acción que se desea aplicar.
- * @returns Estado de los pedidos después de aplicar la acción.
- */
-export function orders_reducer(state: OrderDetails[], action: OrderAction): OrderDetails[] {
-  switch (action.type) {
-    case "add":
-      return add_order(state, action.order)
-    case "cancel":
-      return cancel_order(state, action.order_id)
-    case "start_payment":
-      return start_order_payment(state, action.order_id, action.payment)
-    case "complete_payment":
-      return complete_order_payment(state, action.order_id, action.payment_id, action.result)
-  }
 }

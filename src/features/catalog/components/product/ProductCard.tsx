@@ -23,7 +23,7 @@ export function ProductCard({ hit }: { hit: ProductHit }) {
         </CardTitle>
         {hit.categories.length > 0 && (
           <CardDescription className="text-xs">
-            {hit.categories.join(" · ")}
+            {hit.categories[0] + " · " + hit.categories[1] }
           </CardDescription>
         )}
       </CardHeader>
