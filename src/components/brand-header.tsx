@@ -4,7 +4,7 @@ export function BrandHeader({ heading = true }: { heading?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       <img
-        src={"/LAB4-COMERCIO/icono.svg"}
+        src={"/PY3-COMERCIO/icono.svg"}
         alt="Space Shop"
         aria-hidden="true"
         className="size-14 object-contain dark:invert"
