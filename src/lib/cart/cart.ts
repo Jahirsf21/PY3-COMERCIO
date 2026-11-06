@@ -2,7 +2,7 @@ import type { CartProduct, CartItem, CartAction, CartQuantityLimits, CartValidat
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import { get_suggestions } from "@/lib/shared/suggestions"
-import { get_product_quantity_limits, get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import { get_product_quantity_limits, get_stored_json, get_user_storage_key, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
 
 type QuantityProduct = Pick<CartProduct, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">
@@ -55,20 +55,26 @@ export function parse_cart_data(cart_data: unknown): CartItem[] {
 }
 
 /**
- * Obtiene el carrito guardado en localStorage y lo valida mediante parse_cart_data().
- * @returns Líneas válidas, o un arreglo vacío si no se pueden recuperar.
+ * Obtiene el carrito de un usuario guardado en localStorage y lo valida mediante parse_cart_data().
+ * Sin sesión no hay carrito guardado.
+ * @param user_id Identificador del usuario con sesión iniciada, o null si no hay sesión.
+ * @returns Líneas válidas, o un arreglo vacío si no hay sesión o no se pueden recuperar.
  */
-export function get_stored_cart(): CartItem[] {
-  return parse_cart_data(get_stored_json("space-shop-cart"))
+export function get_stored_cart(user_id: string | null): CartItem[] {
+  if (!user_id) return []
+  return parse_cart_data(get_stored_json(get_user_storage_key("space-shop-cart", user_id)))
 }
 
 /**
- * Guarda las líneas del carrito en localStorage, o elimina la clave si el carrito está vacío.
+ * Guarda las líneas del carrito de un usuario en localStorage, o elimina su clave si el carrito está vacío.
+ * Sin sesión no guarda nada: el carrito queda solo en memoria.
+ * @param user_id Identificador del usuario dueño del carrito, o null si no hay sesión.
  * @param cart Líneas del carrito.
- * @returns true si se guardó; false si el navegador rechaza la operación.
+ * @returns true si se guardó o no había nada que guardar; false si el navegador rechaza la operación.
  */
-export function save_cart(cart: CartItem[]): boolean {
-  return save_stored_list("space-shop-cart", cart)
+export function save_cart(user_id: string | null, cart: CartItem[]): boolean {
+  if (!user_id) return true
+  return save_stored_list(get_user_storage_key("space-shop-cart", user_id), cart)
 }
 
 /**

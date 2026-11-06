@@ -71,6 +71,16 @@ export function is_valid_image(value: unknown): value is ProductImage {
 }
 
 /**
+ * Construye la clave de localStorage de un dato que pertenece a un usuario.
+ * @param storage_key Clave base, por ejemplo space-shop-cart.
+ * @param user_id Identificador del usuario dueño del dato.
+ * @returns Clave con el formato <clave>:<user_id>.
+ */
+export function get_user_storage_key(storage_key: string, user_id: string): string {
+  return `${storage_key}:${user_id}`
+}
+
+/**
  * Obtiene y convierte un JSON guardado en localStorage.
  * @param storage_key Clave de localStorage.
  * @returns Contenido guardado, o null si no existe o no se puede leer.

@@ -6,6 +6,7 @@ import {
   validate_identification_type,
   validate_phone_number,
 } from "@/lib/identification/identification"
+import { get_user_storage_key } from "@/lib/shared/utils"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/types"
 
 /**
@@ -122,37 +123,43 @@ function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
 }
 
 /**
- * Obtiene los datos del formulario guardados en localStorage y los valida mediante parse_checkout_form_data().
- * @returns Datos del formulario, o los valores iniciales si no se pueden leer o el JSON es inválido.
+ * Obtiene el borrador del formulario de compra de un usuario y lo valida mediante parse_checkout_form_data().
+ * @param user_id Identificador del usuario con sesión iniciada, o null si no hay sesión.
+ * @returns Datos del formulario, o los valores iniciales si no hay sesión, no se pueden leer o el JSON es inválido.
  */
-export function get_stored_checkout_form_data(): CheckoutFormData {
+export function get_stored_checkout_form_data(user_id: string | null): CheckoutFormData {
+  if (!user_id) return create_checkout_form_data()
   try {
-    return parse_checkout_form_data(JSON.parse(window.localStorage.getItem("space-shop-checkout") ?? "null"))
+    return parse_checkout_form_data(JSON.parse(window.localStorage.getItem(get_user_storage_key("space-shop-checkout", user_id)) ?? "null"))
   } catch {
     return create_checkout_form_data()
   }
 }
 
 /**
- * Guarda los datos del formulario de compra en localStorage.
+ * Guarda el borrador del formulario de compra de un usuario en localStorage. Sin sesión no guarda nada.
+ * @param user_id Identificador del usuario dueño del borrador, o null si no hay sesión.
  * @param form_data Información del comprador y la entrega.
  * @returns No retorna ningún valor.
  */
-export function save_checkout_form_data(form_data: CheckoutFormData): void {
+export function save_checkout_form_data(user_id: string | null, form_data: CheckoutFormData): void {
+  if (!user_id) return
   try {
-    window.localStorage.setItem("space-shop-checkout", JSON.stringify(form_data))
+    window.localStorage.setItem(get_user_storage_key("space-shop-checkout", user_id), JSON.stringify(form_data))
   } catch {
     return
   }
 }
 
 /**
- * Elimina los datos del formulario guardados en localStorage.
+ * Elimina el borrador del formulario de compra de un usuario guardado en localStorage.
+ * @param user_id Identificador del usuario dueño del borrador, o null si no hay sesión.
  * @returns No retorna ningún valor.
  */
-export function clear_stored_checkout_form_data(): void {
+export function clear_stored_checkout_form_data(user_id: string | null): void {
+  if (!user_id) return
   try {
-    window.localStorage.removeItem("space-shop-checkout")
+    window.localStorage.removeItem(get_user_storage_key("space-shop-checkout", user_id))
   } catch {
     return
   }

@@ -1,23 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import type { CartAction, CartContextValue, CartItem, CartItemValidation, CartProduct, CartQuantityLimits, CartValidationResult } from "@/lib/cart/types"
 import { cart_reducer, create_cart_item, get_cart_add_quantity_limits, get_cart_item_id, get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_cart_total, get_cart_total_units, get_cart_validation_error, get_stored_cart, is_valid_cart_quantity, parse_cart_data, save_cart } from "@/lib/cart/cart"
 import { get_catalog_quantity_limits, get_cart_validation } from "@/lib/catalog/catalog"
 import CartContext from "@/lib/cart/cartContext"
+import { useAuth } from "@/lib/auth/authContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { reconcile_store_cart } from "@/lib/stores/stores"
 
 /**
  * Comparte el carrito, valida sus líneas con el catálogo y guarda cada modificación.
  * Ajusta cantidades al stock de la tienda y conserva los productos si falla la consulta.
+ * El carrito pertenece al usuario con sesión iniciada: al cerrar sesión o iniciar otra, se carga el carrito
+ * del usuario activo (vacío sin sesión) y se descartan las operaciones pendientes del anterior.
  * @param props Propiedades del proveedor.
  * @param props.children Componentes que consumen el carrito.
  * @returns Proveedor del estado y las acciones del carrito.
  */
 export function CartProvider({ children }: { children: ReactNode }) {
   const { selected_store, get_selected_store, report_cart_changes } = useStores()
-  const [cart, set_cart] = useState(get_stored_cart)
+  const { user } = useAuth()
+  const user_id = user?.id ?? null
+  const [cart_state, set_cart_state] = useState(() => ({ user_id, items: get_stored_cart(user_id) }))
+  const cart = cart_state.items
   const current_cart = useRef(cart)
+  const current_user_id = useRef(cart_state.user_id)
   /**
    * Obtiene la referencia vigente del carrito, incluso durante una operación asíncrona.
    * @returns Líneas actuales en memoria, sin leer nuevamente localStorage.
@@ -30,17 +37,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [storage_error, set_storage_error] = useState(false)
   const [notice, set_notice] = useState<string | null>(null)
 
+  if (cart_state.user_id !== user_id) {
+    set_cart_state({ user_id, items: get_stored_cart(user_id) })
+    set_validations([])
+    set_storage_error(false)
+    set_notice(null)
+  }
+
+  useLayoutEffect(() => {
+    current_cart.current = cart_state.items
+    current_user_id.current = cart_state.user_id
+  }, [cart_state])
+
   /**
-   * Aplica una acción al carrito y guarda el resultado cuando su estado cambia.
+   * Aplica una acción al carrito del usuario activo y guarda el resultado cuando su estado cambia.
    * @param action Acción validada que se desea aplicar.
    * @returns true si el carrito cambió; false si el reducer no aceptó cambios.
    */
   const apply_action = useCallback((action: CartAction): boolean => {
     const next_cart = cart_reducer(current_cart.current, action)
     if (next_cart === current_cart.current) return false
+    const owner_id = current_user_id.current
     current_cart.current = next_cart
-    set_cart(next_cart)
-    set_storage_error(!save_cart(next_cart))
+    set_cart_state({ user_id: owner_id, items: next_cart })
+    set_storage_error(!save_cart(owner_id, next_cart))
     return true
   }, [])
 

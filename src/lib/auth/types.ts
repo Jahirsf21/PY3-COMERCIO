@@ -67,4 +67,5 @@ export type AuthContextValue = {
   user: User | null
   storage_error: boolean
   login: (credentials: LoginCredentials) => Promise<LoginResult>
+  logout: () => void
 }
