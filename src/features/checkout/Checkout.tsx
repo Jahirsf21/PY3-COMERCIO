@@ -7,6 +7,7 @@ import { CheckoutOrderProducts } from "@/features/checkout/components/CheckoutOr
 import { CheckoutOrderSummary } from "@/features/checkout/components/CheckoutOrderSummary"
 import { clear_stored_checkout_form_data, get_stored_checkout_form_data, save_checkout_form_data } from "@/lib/checkout/checkout"
 import type { CheckoutFormData } from "@/lib/checkout/types"
+import { useAuth } from "@/lib/auth/authContext"
 import { useCart } from "@/lib/cart/cartContext"
 import { useOrders } from "@/lib/orders/ordersContext"
 import { prepare_order } from "@/lib/orders/orders"
@@ -16,7 +17,9 @@ import { useStores } from "@/lib/stores/storesContext"
 import type { StoreCartProduct } from "@/lib/stores/types"
 
 export default function Checkout() {
-  const [formData, setFormData] = useState(get_stored_checkout_form_data)
+  const { user } = useAuth()
+  const user_id = user?.id ?? null
+  const [formData, setFormData] = useState(() => get_stored_checkout_form_data(user_id))
   const { cart, get_cart, clear_cart, revalidate_cart } = useCart()
   const { create_order } = useOrders()
   const { selected_store, get_selected_store, select_store } = useStores()
@@ -31,7 +34,7 @@ export default function Checkout() {
   const store_error = needs_store && store_failure?.key === store_request_key ? store_failure.message : undefined
   const is_assigning_store = needs_store && store_error === undefined
 
-  useEffect(() => { save_checkout_form_data(formData) }, [formData])
+  useEffect(() => { save_checkout_form_data(user_id, formData) }, [user_id, formData])
   useEffect(() => () => { creating_order.current = false }, [])
 
   useEffect(() => {
@@ -81,7 +84,7 @@ export default function Checkout() {
         toast.add({ title: "No pudimos guardar el pedido", description: "Revisa los permisos de almacenamiento del navegador e intenta nuevamente.", type: "error" })
         return
       }
-      clear_stored_checkout_form_data()
+      clear_stored_checkout_form_data(user_id)
       startTransition(() => {
         clear_cart()
         navigate(`/pedido/${encodeURIComponent(order.id)}/pago`, { replace: true })

@@ -8,7 +8,7 @@ import AuthContext from "@/lib/auth/authContext"
  * Comparte la sesión simulada y la guarda en localStorage.
  * @param props Propiedades del proveedor.
  * @param props.children Componentes que consumen la sesión.
- * @returns Proveedor del usuario activo y de la acción de inicio de sesión.
+ * @returns Proveedor del usuario activo y de las acciones de inicio y cierre de sesión.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, set_user] = useState(get_stored_session)
@@ -28,7 +28,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result
   }
 
-  const value: AuthContextValue = { user, storage_error, login }
+  /**
+   * Cierra la sesión: elimina la sesión guardada y deja la tienda sin usuario activo.
+   * El carrito y el borrador de checkout del usuario quedan guardados con su clave y no se muestran a otro usuario.
+   * @returns No retorna ningún valor.
+   */
+  function logout(): void {
+    set_storage_error(!save_session(null))
+    set_user(null)
+  }
+
+  const value: AuthContextValue = { user, storage_error, login, logout }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
