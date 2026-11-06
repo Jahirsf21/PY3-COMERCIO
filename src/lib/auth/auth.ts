@@ -19,9 +19,9 @@ export function is_valid_role(value: unknown): value is UserRole {
  * @returns Nombre del rol para mostrar en la interfaz.
  */
 export function get_role_label(role: UserRole): string {
-  if (role === "B2B") return "Cliente empresarial"
+  if (role === "B2B") return "Persona Jurídica"
   if (role === "ADMIN") return "Administrador"
-  return "Cliente"
+  return "Persona"
 }
 
 /**
