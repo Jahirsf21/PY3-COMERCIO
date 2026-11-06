@@ -1,6 +1,11 @@
+import { LogOutIcon } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
+import { toast } from "@/components/ui/toast"
+import { useAuth } from "@/lib/auth/authContext"
 import { get_role_label } from "@/lib/auth/auth"
 import type { User } from "@/lib/auth/types"
 import { cn } from "@/lib/shared/utils"
@@ -27,14 +32,25 @@ function get_initials(full_name: string): string {
 /**
  * Botón circular con las iniciales del usuario activo.
  * Al presionarlo despliega un cuadro con el nombre completo y, como subtítulo, el tipo de usuario (B2C, B2B o ADMIN)
- * y el tipo de cliente; para un usuario B2B agrega la empresa.
+ * y el tipo de cliente; para un usuario B2B agrega la empresa. Incluye el botón para cerrar sesión.
  * @param props Propiedades del componente.
  * @param props.user Usuario con sesión iniciada.
  * @param props.className Clases adicionales para el botón.
  * @returns Botón del usuario activo con su cuadro de información.
  */
 export function ActiveUserInfo({ user, className }: ActiveUserInfoProps) {
+  const { logout } = useAuth()
   const initials = get_initials(user.full_name)
+
+  /**
+   * Cierra la sesión del usuario activo y confirma la acción con un aviso.
+ * El cuadro desaparece junto con el botón del usuario, porque el encabezado deja de tener usuario activo.
+   * @returns No retorna ningún valor.
+   */
+  function handle_logout(): void {
+    logout()
+    toast.add({ title: "Sesión cerrada", description: "Vuelve a iniciar sesión para usar tu carrito.", type: "success" })
+  }
 
   return (
     <Popover>
@@ -69,6 +85,11 @@ export function ActiveUserInfo({ user, className }: ActiveUserInfoProps) {
             </PopoverDescription>
           </PopoverHeader>
         </div>
+        <Separator className="my-1" />
+        <Button type="button" variant="outline" onClick={handle_logout} className="h-10 w-full cursor-pointer gap-2">
+          <LogOutIcon aria-hidden="true" className="size-4" />
+          Cerrar sesión
+        </Button>
       </PopoverContent>
     </Popover>
   )
