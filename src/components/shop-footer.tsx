@@ -11,8 +11,35 @@ const payment_methods = [
   { src: amex_logo, alt: "American Express" },
 ]
 
-export function ShopFooter() {
+/**
+ * Pie de página de la tienda con sedes, enlaces de políticas y formas de pago.
+ * La versión compacta muestra en una sola fila el derecho de autor, el enlace a Políticas y Ayuda y las formas de pago.
+ * @param props Propiedades del pie de página.
+ * @param props.compact Indica si se muestra la versión compacta, para pantallas que deben caber sin desplazamiento.
+ * @returns Pie de página completo o compacto.
+ */
+export function ShopFooter({ compact = false }: { compact?: boolean }) {
   const store_groups = get_store_groups()
+
+  if (compact) {
+    return (
+      <footer className="shrink-0 border-t border-input bg-background">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 text-sm text-muted-foreground lg:px-6">
+          <p>© {new Date().getFullYear()} Space Shop</p>
+          <Link to="/politicas-y-ayuda" className="hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            Políticas y Ayuda
+          </Link>
+          <ul aria-label="Formas de pago" className="flex items-center gap-2">
+            {payment_methods.map((method) => (
+              <li key={method.alt}>
+                <img src={method.src} alt={method.alt} className="h-6 w-auto" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </footer>
+    )
+  }
 
   return (
     <footer className="border-t border-input bg-muted/40">

@@ -20,7 +20,7 @@ export function StoreSelector({ id, label = "Tienda", required = false, error, c
     <Select<string>
       value={selected_store?.id ?? "none"}
       required={required}
-      items={[{ value: "none", label: "Seleccione su tienda" }, ...groups.flatMap((group) => group.stores.map((store) => ({ value: store.id, label: store.locale_name })))]}
+      items={[{ value: "none", label: "Tienda" }, ...groups.flatMap((group) => group.stores.map((store) => ({ value: store.id, label: store.locale_name })))]}
       onValueChange={(value) => {
         if (value === null) return
         const store_id = value === "none" ? null : value
