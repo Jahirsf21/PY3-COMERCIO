@@ -2,7 +2,7 @@ import type { AnalyticsEvent, AnalyticsEventPayloads, AnalyticsEventType } from 
 import { is_valid_role } from "@/lib/auth/auth"
 import { get_stored_json, get_user_storage_key, is_nonempty_string, is_positive_integer, is_record, is_string_list, is_valid_currency, is_valid_date, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 
-const analytics_event_types: AnalyticsEventType[] = ["login", "search", "product_view", "add_to_cart", "checkout_start", "purchase"]
+export const analytics_event_types: AnalyticsEventType[] = ["login", "search", "product_view", "add_to_cart", "checkout_start", "purchase"]
 const max_stored_events = 500
 
 /**
