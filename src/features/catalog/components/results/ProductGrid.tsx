@@ -18,7 +18,7 @@ export function ProductGrid() {
   }
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4">
       {items.map((hit) => (
         <ProductCard key={hit.objectID} hit={hit} />
       ))}

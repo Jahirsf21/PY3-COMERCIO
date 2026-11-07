@@ -105,7 +105,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
           render={<Button className="w-full cursor-pointer" size="lg" />}
         >
           <ShoppingCartIcon aria-hidden="true" />
-          Agregar al carrito
+          <span>Agregar<span className="hidden sm:inline"> al carrito</span></span>
         </DialogTrigger>
         <DialogContent showCloseButton={false} className="flex max-h-[90dvh] flex-col overflow-hidden p-5 sm:max-w-lg sm:p-6 motion-reduce:animate-none">
           <DialogHeader className="shrink-0 pr-10">

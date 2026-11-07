@@ -1,4 +1,3 @@
-import { Highlight } from "react-instantsearch"
 import { Link } from "react-router-dom"
 import { StarIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,16 +9,14 @@ import { get_product_unit_price } from "@/lib/cart/cart"
 
 export function ProductCard({ hit }: { hit: ProductHit }) {
   return (
-    <Card className="gap-2 pt-4 transition-[border-color,box-shadow] duration-150 hover:border-ring hover:shadow-md motion-reduce:transition-none">
+    <Card className="min-w-0 gap-2 pt-3 [--card-spacing:--spacing(2)] transition-[border-color,box-shadow] duration-150 hover:border-ring hover:shadow-md motion-reduce:transition-none sm:pt-4 sm:[--card-spacing:--spacing(4)]">
       <CardContent>
         <ProductImagePreview image={hit.image} title={hit.title} />
       </CardContent>
       <CardHeader className="gap-2">
         <CardDescription className="text-xs uppercase">{hit.brand}</CardDescription>
         <CardTitle className="text-sm font-medium">
-          <h2>
-            <Highlight attribute="title" hit={hit} />
-          </h2>
+          <h2>{hit.title}</h2>
         </CardTitle>
         {hit.categories.length > 0 && (
           <CardDescription className="text-xs">
