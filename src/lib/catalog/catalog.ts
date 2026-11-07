@@ -5,6 +5,7 @@ import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
 import { get_available_quantity_by_size } from "@/lib/catalog/stock"
 import { get_suggestions } from "@/lib/shared/suggestions"
 import type { Store } from "@/lib/stores/types"
+import { get_filter_value } from "@/lib/shared/utils"
 
 export { get_available_quantity_by_size, get_sizes_from_stock } from "@/lib/catalog/stock"
 
@@ -16,12 +17,11 @@ export { get_available_quantity_by_size, get_sizes_from_stock } from "@/lib/cata
  */
 export async function get_product_variants(product_id: string): Promise<ProductHit[]> {
   if (!product_id) return []
-  const product_id_filter_value = product_id.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
       indexName: algolia_indices.main,
       query: "",
-      filters: `product_id:"${product_id_filter_value}"`,
+      filters: `product_id:${get_filter_value(product_id)}`,
       distinct: false,
       hitsPerPage: 50,
     }],
@@ -29,6 +29,37 @@ export async function get_product_variants(product_id: string): Promise<ProductH
   const search_result = results[0]
   if (!search_result || !("hits" in search_result) || !Array.isArray(search_result.hits)) throw new Error("Respuesta de catálogo inválida.")
   return search_result.hits as ProductHit[]
+}
+
+/**
+ * Obtiene de Algolia los datos actuales de varias variantes, sin usar la caché del cliente, en el mismo orden recibido.
+ * Si una variante ya no existe, usa otra variante del mismo producto; si el producto ya no existe, lo omite.
+ * @param variants Productos y variantes que se desean consultar, por ejemplo los productos vistos recientemente.
+ * @returns Variantes encontradas en el orden de la lista recibida; vacío si la lista está vacía.
+ * @throws Si falla la consulta o la respuesta no contiene un arreglo de hits.
+ */
+export async function get_products_by_variants(variants: { product_id: string; sku: string }[]): Promise<ProductHit[]> {
+  const product_ids = [...new Set(variants.map((variant) => variant.product_id).filter((product_id) => product_id.trim()))]
+  if (product_ids.length === 0) return []
+  const product_filters = product_ids.map((product_id) => `product_id:${get_filter_value(product_id)}`)
+  const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
+    requests: [{
+      indexName: algolia_indices.main,
+      query: "",
+      filters: product_filters.join(" OR "),
+      distinct: false,
+      hitsPerPage: 200,
+    }],
+  })
+  const search_result = results[0]
+  if (!search_result || !("hits" in search_result) || !Array.isArray(search_result.hits)) throw new Error("Respuesta de catálogo inválida.")
+  const hits = search_result.hits as ProductHit[]
+  const products: ProductHit[] = []
+  for (const variant of variants) {
+    const hit = hits.find((product) => product.sku === variant.sku) ?? hits.find((product) => product.product_id === variant.product_id)
+    if (hit && !products.includes(hit)) products.push(hit)
+  }
+  return products
 }
 
 /**

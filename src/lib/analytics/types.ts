@@ -59,11 +59,32 @@ export type AnalyticsEvent = {
 }[AnalyticsEventType]
 
 /**
+ * Producto visto recientemente; solo identifica la variante, sin precio ni stock, que se consultan actualizados al mostrarlo
+ */
+export type ViewedProduct = {
+  product_id: string
+  sku: string
+  title: string
+  categories: string[]
+  viewed_at: string
+}
+
+/**
+ * Búsqueda reciente
+ */
+export type RecentSearch = {
+  query: string
+  searched_at: string
+}
+
+/**
  * Estado y operaciones expuestas por el contexto de analítica
  */
 export type AnalyticsContextValue = {
   owner_id: string
   events: AnalyticsEvent[]
+  viewed_products: ViewedProduct[]
+  recent_searches: RecentSearch[]
   storage_error: boolean
   track_event: <T extends AnalyticsEventType>(type: T, payload: AnalyticsEventPayloads[T]) => void
   track_search: (query: string) => void

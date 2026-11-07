@@ -1,6 +1,6 @@
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
-import { get_suggestion_categories, is_product_suggestion_available } from "@/lib/shared/utils"
+import { get_filter_value, get_suggestion_categories, is_product_suggestion_available } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
 
 /**
@@ -18,9 +18,9 @@ import type { Store } from "@/lib/stores/types"
 export async function get_suggestions(category_names: string[], product_ids: string[], selected_store: Store | null = null): Promise<ProductHit[]> {
   const categories = get_suggestion_categories(category_names)
   if (categories.length === 0) return []
-  const category_filters = categories.map((category_name) => `categories:${JSON.stringify(category_name)}`)
+  const category_filters = categories.map((category_name) => `categories:${get_filter_value(category_name)}`)
   const excluded_product_ids = new Set(product_ids)
-  const excluded_product_filters = [...excluded_product_ids].map((product_id) => `NOT product_id:${JSON.stringify(product_id)}`)
+  const excluded_product_filters = [...excluded_product_ids].map((product_id) => `NOT product_id:${get_filter_value(product_id)}`)
   const suggestion_filters = [
     `(${category_filters.join(" OR ")})`,
     ...excluded_product_filters,

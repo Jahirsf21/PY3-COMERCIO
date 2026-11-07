@@ -1,6 +1,6 @@
 import type { AnalyticsEvent, AnalyticsEventPayloads, AnalyticsEventType } from "@/lib/analytics/types"
 import { is_valid_role } from "@/lib/auth/auth"
-import { get_stored_json, get_user_storage_key, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import { get_stored_json, get_user_storage_key, is_nonempty_string, is_positive_integer, is_record, is_string_list, is_valid_currency, is_valid_date, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 
 const analytics_event_types: AnalyticsEventType[] = ["login", "search", "product_view", "add_to_cart", "checkout_start", "purchase"]
 const max_stored_events = 500
@@ -37,15 +37,6 @@ export function normalize_search_query(query: string): string | null {
 }
 
 /**
- * Comprueba que un valor sea un arreglo de textos no vacíos.
- * @param value Valor que se desea comprobar.
- * @returns true si todos los elementos son textos con contenido.
- */
-function is_string_list(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(is_nonempty_string)
-}
-
-/**
  * Valida la información de un evento según su tipo.
  * @param type Tipo del evento.
  * @param payload Información recibida.
@@ -77,7 +68,7 @@ export function parse_analytics_events(events_data: unknown): AnalyticsEvent[] {
   if (!Array.isArray(events_data)) return []
   const events = events_data.filter((event): event is AnalyticsEvent => {
     if (!is_record(event) || !is_nonempty_string(event.id) || !analytics_event_types.includes(event.type as AnalyticsEventType)) return false
-    if (typeof event.occurred_at !== "string" || Number.isNaN(Date.parse(event.occurred_at))) return false
+    if (!is_valid_date(event.occurred_at)) return false
     return is_record(event.payload) && is_valid_payload(event.type as AnalyticsEventType, event.payload)
   })
   return events.slice(-max_stored_events)
