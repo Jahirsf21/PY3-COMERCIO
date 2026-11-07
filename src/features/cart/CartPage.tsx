@@ -10,6 +10,7 @@ import { format_price } from "@/lib/shared/utils"
 import { CartItemCard } from "@/features/cart/components/CartItemCard"
 import { CartStatus } from "@/features/cart/components/CartStatus"
 import { CartSuggestions } from "@/features/cart/components/CartSuggestions"
+import { HistoryRecommendations } from "@/features/catalog/components/results/HistoryRecommendations"
 
 
 export default function CartPage() {
@@ -159,6 +160,7 @@ export default function CartPage() {
           </div>
         )}
         {cart.length > 0 && <CartSuggestions />}
+        <HistoryRecommendations excluded_product_ids={cart.map((item) => item.product_id)} className="mt-10" />
       </main>
     </div>
   )
