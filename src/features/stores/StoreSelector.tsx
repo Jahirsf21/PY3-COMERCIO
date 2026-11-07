@@ -34,7 +34,7 @@ export function StoreSelector({ id, label = "Tienda", required = false, error, c
         <MapPinIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="end" alignItemWithTrigger={false}>
+      <SelectContent align="end" alignItemWithTrigger={false} className="min-w-max">
         <SelectItem value="none" className="cursor-pointer">Seleccione su tienda</SelectItem>
         {groups.map((group) => (
           <SelectGroup key={group.province}>
