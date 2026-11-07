@@ -2,7 +2,7 @@ import { useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MobileFilterSheet } from "@/features/catalog/components/filters/MobileFilterSheet"
 import { ProductGrid } from "@/features/catalog/components/results/ProductGrid"
-import { RecentlyViewedProducts } from "@/features/catalog/components/results/RecentlyViewedProducts"
+import { CatalogHistorySections } from "@/features/catalog/components/results/CatalogHistorySections"
 import { PaginationControls } from "@/features/catalog/components/results/PaginationControls"
 import { HitsPerPageSelect } from "@/features/catalog/components/results/HitsPerPageSelect"
 import { SortBySelect } from "@/features/catalog/components/results/SortBySelect"
@@ -28,7 +28,7 @@ export function ResultsPanel() {
       <div className="relative min-h-0 flex-1">
         <ScrollArea ref={resultsRef} className="h-full">
           <div className="p-1 pr-3 pb-28 lg:pb-1">
-            <RecentlyViewedProducts />
+            <CatalogHistorySections />
             <ProductGrid />
           </div>
         </ScrollArea>
