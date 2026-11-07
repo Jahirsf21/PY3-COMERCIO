@@ -78,6 +78,36 @@ export type RecentSearch = {
 }
 
 /**
+ * Métricas calculadas a partir de los eventos registrados
+ */
+export type AnalyticsMetrics = {
+  product_views: number
+  unique_products_viewed: number
+  searches: number
+  add_to_cart: number
+  added_units: number
+  purchases: number
+}
+
+/**
+ * Cantidad de eventos de un día, por tipo y en total
+ */
+export type DailyEventCount = {
+  date: string
+  counts: Record<AnalyticsEventType, number>
+  total: number
+}
+
+/**
+ * Eventos de todos los usuarios y sesiones anónimas guardados en el navegador
+ */
+export type BrowserAnalytics = {
+  events: AnalyticsEvent[]
+  users_count: number
+  guest_sessions_count: number
+}
+
+/**
  * Estado y operaciones expuestas por el contexto de analítica
  */
 export type AnalyticsContextValue = {
