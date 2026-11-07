@@ -7,6 +7,7 @@ import { CheckoutOrderProducts } from "@/features/checkout/components/CheckoutOr
 import { CheckoutOrderSummary } from "@/features/checkout/components/CheckoutOrderSummary"
 import { clear_stored_checkout_form_data, get_stored_checkout_form_data, save_checkout_form_data } from "@/lib/checkout/checkout"
 import type { CheckoutFormData } from "@/lib/checkout/types"
+import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { useAuth } from "@/lib/auth/authContext"
 import { useCart } from "@/lib/cart/cartContext"
 import { useOrders } from "@/lib/orders/ordersContext"
@@ -20,7 +21,9 @@ export default function Checkout() {
   const { user } = useAuth()
   const user_id = user?.id ?? null
   const [formData, setFormData] = useState(() => get_stored_checkout_form_data(user_id))
-  const { cart, get_cart, clear_cart, revalidate_cart } = useCart()
+  const { cart, get_cart, clear_cart, revalidate_cart, total, total_items } = useCart()
+  const { track_event } = useAnalytics()
+  const tracked_checkout = useRef(false)
   const { create_order } = useOrders()
   const { selected_store, get_selected_store, select_store } = useStores()
   const [is_generating, set_is_generating] = useState(false)
@@ -36,6 +39,11 @@ export default function Checkout() {
 
   useEffect(() => { save_checkout_form_data(user_id, formData) }, [user_id, formData])
   useEffect(() => () => { creating_order.current = false }, [])
+  useEffect(() => {
+    if (tracked_checkout.current || cart.length === 0) return
+    tracked_checkout.current = true
+    track_event("checkout_start", { items_count: cart.length, total_units: total_items, total, currency: cart[0].currency })
+  }, [cart, total, total_items, track_event])
 
   useEffect(() => {
     if (!needs_store || store_error !== undefined) return

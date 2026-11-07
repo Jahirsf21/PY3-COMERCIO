@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { ReactNode } from "react"
 import type { AuthContextValue, LoginCredentials, LoginResult } from "@/lib/auth/types"
 import { authenticate_user, get_stored_session, save_session } from "@/lib/auth/auth"
+import { record_analytics_event } from "@/lib/analytics/analytics"
 import AuthContext from "@/lib/auth/authContext"
 
 /**
@@ -16,12 +17,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Comprueba las credenciales contra el índice de usuarios e inicia la sesión si son válidas.
+   * Registra el evento de inicio de sesión en los eventos del usuario antes de activarlo.
    * @param credentials Usuario y contraseña ingresados.
    * @returns Promesa con el resultado del inicio de sesión.
    */
   async function login(credentials: LoginCredentials): Promise<LoginResult> {
     const result = await authenticate_user(credentials)
     if (result.status === "success") {
+      record_analytics_event(result.user.id, "login", { user_id: result.user.id, role: result.user.role })
       set_storage_error(!save_session(result.user))
       set_user(result.user)
     }

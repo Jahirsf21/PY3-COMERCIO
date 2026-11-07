@@ -4,6 +4,7 @@ import type { CartAction, CartContextValue, CartItem, CartItemValidation, CartPr
 import { cart_reducer, create_cart_item, get_cart_add_quantity_limits, get_cart_item_id, get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_cart_total, get_cart_total_units, get_cart_validation_error, get_stored_cart, is_valid_cart_quantity, parse_cart_data, save_cart } from "@/lib/cart/cart"
 import { get_catalog_quantity_limits, get_cart_validation } from "@/lib/catalog/catalog"
 import CartContext from "@/lib/cart/cartContext"
+import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { useAuth } from "@/lib/auth/authContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { reconcile_store_cart } from "@/lib/stores/stores"
@@ -20,6 +21,7 @@ import { reconcile_store_cart } from "@/lib/stores/stores"
 export function CartProvider({ children }: { children: ReactNode }) {
   const { selected_store, get_selected_store, report_cart_changes } = useStores()
   const { user } = useAuth()
+  const { track_event } = useAnalytics()
   const user_id = user?.id ?? null
   const [cart_state, set_cart_state] = useState(() => ({ user_id, items: get_stored_cart(user_id) }))
   const cart = cart_state.items
@@ -102,6 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /**
    * Agrega unidades respetando las reglas B2C y el stock actual de la tienda.
    * Descarta la operación si el carrito o la tienda cambian durante la consulta.
+   * Registra el evento de agregar al carrito con las unidades agregadas.
    * @param product Producto que se desea agregar.
    * @param selected_size Talla seleccionada.
    * @param quantity Unidades adicionales; por defecto, el mínimo permitido para agregar.
@@ -125,7 +128,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return false
       }
       const item = parse_cart_data([create_cart_item(product, selected_size, additional_quantity)])[0]
-      return Boolean(item && apply_action({ type: "add", item, limits }))
+      if (!item || !apply_action({ type: "add", item, limits })) return false
+      track_event("add_to_cart", {
+        product_id: item.product_id,
+        sku: item.sku,
+        title: item.title,
+        selected_size: item.selected_size,
+        quantity: additional_quantity,
+        unit_price: item.unit_price,
+        currency: item.currency,
+      })
+      return true
     } catch (error) {
       revalidate_cart()
       throw error

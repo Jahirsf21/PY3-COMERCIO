@@ -5,6 +5,7 @@ import type { CardPaymentData, PaymentResult } from "@/lib/payments/types"
 import { add_order, cancel_order, complete_order_payment, create_order, create_order_payment, get_next_order_number, get_order_payment_block, get_stored_orders, recover_interrupted_payments, save_orders, start_order_payment } from "@/lib/orders/orders"
 import { process_payment, validate_card_payment_data } from "@/lib/payments/payments"
 import OrdersContext from "@/lib/orders/ordersContext"
+import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
 /**
  * Gestiona los pedidos de esta pestaña y conserva en memoria los resultados de pago que no se puedan guardar.
@@ -18,6 +19,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const current_orders = useRef(orders)
   const [storage_error, set_storage_error] = useState(false)
   const [unsaved_order_ids, set_unsaved_order_ids] = useState<string[]>([])
+  const { track_event } = useAnalytics()
 
   /**
    * Guarda la lista de pedidos y actualiza su estado en memoria.
@@ -61,6 +63,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   /**
    * Registra un intento de pago, consulta el Sandbox y conserva su resultado sin guardar la tarjeta.
    * Bloquea nuevos intentos del mismo pedido en esta pestaña mientras se procesa o falta guardar el resultado.
+   * Registra el evento de compra completada cuando el pago es aprobado.
    * @param order_id Identificador del pedido que se desea pagar.
    * @param card_data Datos de la tarjeta, utilizados únicamente durante este intento.
    * @returns Promesa con el resultado procesado, pendiente de guardar o rechazado antes de completar la operación.
@@ -86,6 +89,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     const next_orders = complete_order_payment(current_orders.current, order_id, payment.id, result)
     if (next_orders === current_orders.current) return { status: "rejected", message: "Este intento de pago ya no está vigente." }
     const is_saved = commit_orders(next_orders, order_id)
+    if (result.status === "APPROVE") {
+      track_event("purchase", {
+        order_id: order.id,
+        order_number: order.order_number,
+        items_count: order.items.length,
+        total: order.total,
+        currency: order.currency,
+      })
+    }
     return {
       status: is_saved ? "processed" : "unsaved",
       payment: { ...payment, status: result.status },

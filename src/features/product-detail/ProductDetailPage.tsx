@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 import { CheckIcon, MapPinIcon, PackageCheckIcon, StarIcon } from "lucide-react"
 import { cn } from "cn"
@@ -10,6 +10,7 @@ import { ProductSuggestions } from "@/features/product-detail/ProductSuggestions
 import { ShopHeader } from "@/components/shop-header"
 import { format_price } from "@/lib/shared/utils"
 import { useStores } from "@/lib/stores/storesContext"
+import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
 function ProductDetailSkeleton() {
   return (
@@ -31,6 +32,8 @@ function ProductDetailSkeleton() {
 
 export default function ProductDetailPage() {
   const { selected_store } = useStores()
+  const { track_event } = useAnalytics()
+  const tracked_view_sku = useRef<string | null>(null)
   const { productId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [result, setResult] = useState<VariantsResult>();
@@ -76,6 +79,17 @@ export default function ProductDetailPage() {
     selectedVariant?.sku === requestedSku && requestedSize && sizes.includes(requestedSize)
       ? requestedSize
       : null;
+
+  useEffect(() => {
+    if (!selectedVariant || tracked_view_sku.current === selectedVariant.sku) return
+    tracked_view_sku.current = selectedVariant.sku
+    track_event("product_view", {
+      product_id: selectedVariant.product_id,
+      sku: selectedVariant.sku,
+      title: selectedVariant.title,
+      categories: selectedVariant.categories,
+    })
+  }, [selectedVariant, track_event])
 
   if (isLoading) {
     return (
