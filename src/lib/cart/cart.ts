@@ -2,7 +2,7 @@ import type { CartProduct, CartItem, CartAction, CartQuantityLimits, CartValidat
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import { get_suggestions } from "@/lib/shared/suggestions"
-import { get_product_quantity_limits, get_stored_json, get_user_storage_key, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import { get_filter_value, get_product_quantity_limits, get_stored_json, get_user_storage_key, is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
 
 type QuantityProduct = Pick<CartProduct, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">
@@ -193,7 +193,7 @@ export function is_valid_cart_quantity(quantity: number, limits: CartQuantityLim
  * @returns Límites para agregar unidades, o null si no hay límites o la cantidad actual es inválida.
  */
 export function get_cart_add_quantity_limits(limits: CartQuantityLimits | null, cart_quantity: number): CartQuantityLimits | null {
-  if (!limits || !Number.isSafeInteger(cart_quantity) || cart_quantity < 0) return null
+  if (!limits || !is_non_negative_integer(cart_quantity)) return null
   if (cart_quantity === 0) return limits
   if (!is_valid_cart_quantity(cart_quantity, limits)) return null
   return {
@@ -344,7 +344,7 @@ export function get_cart_pagination(cart: CartItem[], requested_page = 1): CartP
   const items_per_page = 4
   const total_products = cart.length
   const total_pages = Math.ceil(total_products / items_per_page)
-  const valid_page = Number.isSafeInteger(requested_page) && requested_page > 0 ? requested_page : 1
+  const valid_page = is_positive_integer(requested_page) ? requested_page : 1
   const current_page = Math.min(valid_page, Math.max(total_pages, 1))
   const first_item_index = (current_page - 1) * items_per_page
 
@@ -367,7 +367,7 @@ export function get_cart_pagination(cart: CartItem[], requested_page = 1): CartP
 export async function get_cart_suggestions(product_ids: string[], selected_store: Store | null = null): Promise<ProductHit[]> {
   const cart_product_ids = [...new Set(product_ids.filter(is_nonempty_string).map((product_id) => product_id.trim()))]
   if (cart_product_ids.length === 0) return []
-  const cart_product_filters = cart_product_ids.map((product_id) => `product_id:${JSON.stringify(product_id)}`)
+  const cart_product_filters = cart_product_ids.map((product_id) => `product_id:${get_filter_value(product_id)}`)
   const { data: { results: category_results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
       indexName: algolia_indices.main,
@@ -435,7 +435,7 @@ export function create_cart_item(product: CartProduct, selected_size: string, qu
  * @returns Carrito actualizado, o el mismo estado si la cantidad resultante es inválida.
  */
 export function add_cart_item(state: CartItem[], new_item: CartItem, limits: CartQuantityLimits): CartItem[] {
-  if (!Number.isSafeInteger(new_item.quantity) || new_item.quantity < 1) return state
+  if (!is_positive_integer(new_item.quantity)) return state
   const existing_item = state.find((item) => item.id === new_item.id)
   const combined_quantity = (existing_item?.quantity ?? 0) + new_item.quantity
   if (!is_valid_cart_quantity(combined_quantity, limits)) return state

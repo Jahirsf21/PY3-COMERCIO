@@ -1,6 +1,6 @@
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import type { Company, LoginCredentials, LoginResult, User, UserRecord, UserRole } from "@/lib/auth/types"
-import { get_stored_json, is_nonempty_string, is_record } from "@/lib/shared/utils"
+import { get_filter_value, get_stored_json, is_nonempty_string, is_record } from "@/lib/shared/utils"
 
 const user_roles: UserRole[] = ["B2C", "B2B", "ADMIN"]
 
@@ -69,12 +69,11 @@ function parse_user_record(record: Record<string, unknown>, role: UserRole): Use
  * @throws Si falla la consulta o la respuesta no contiene un arreglo de hits.
  */
 async function find_user_records(username: string): Promise<UserRecord[]> {
-  const username_filter_value = username.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
   const { data: { results } } = await search_client.searchWithHTTPInfo<UserRecord>({
     requests: [{
       indexName: algolia_indices.users,
       query: "",
-      filters: `username:"${username_filter_value}"`,
+      filters: `username:${get_filter_value(username)}`,
       hitsPerPage: 1,
     }],
   })

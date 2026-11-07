@@ -37,12 +37,48 @@ export function is_positive_integer(value: unknown): value is number {
 }
 
 /**
+ * Comprueba que un valor sea un entero seguro mayor o igual que cero.
+ * @param value Valor que se desea comprobar.
+ * @returns true si el valor es un entero no negativo.
+ */
+export function is_non_negative_integer(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+}
+
+/**
+ * Comprueba que un valor sea un arreglo de textos no vacíos.
+ * @param value Valor que se desea comprobar.
+ * @returns true si todos los elementos son textos con contenido.
+ */
+export function is_string_list(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(is_nonempty_string)
+}
+
+/**
+ * Prepara un texto para usarlo como valor en un filtro de Algolia, entre comillas y con las comillas y barras escapadas.
+ * @param value Texto que se desea filtrar, por ejemplo un product_id o un username.
+ * @returns Valor entre comillas listo para un filtro, por ejemplo "basketball-shoes-0001".
+ */
+export function get_filter_value(value: string): string {
+  return JSON.stringify(value)
+}
+
+/**
  * Comprueba que un valor sea un código de moneda de tres letras mayúsculas.
  * @param value Valor que se desea comprobar.
  * @returns true si el código tiene el formato esperado.
  */
 export function is_valid_currency(value: unknown): value is string {
   return typeof value === "string" && /^[A-Z]{3}$/.test(value)
+}
+
+/**
+ * Comprueba que un valor sea un texto con una fecha válida.
+ * @param value Valor que se desea comprobar.
+ * @returns true si el valor es un texto que representa una fecha válida.
+ */
+export function is_valid_date(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value))
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { StockByLocation } from "@/lib/catalog/types"
 import type { Store } from "@/lib/stores/types"
+import { is_non_negative_integer, is_record } from "@/lib/shared/utils"
 
 /**
  * Combina las tallas registradas sin sumar el inventario de los locales.
@@ -10,7 +11,7 @@ export function get_sizes_from_stock(stock_by_location: StockByLocation[]): stri
   if (!Array.isArray(stock_by_location)) return []
   const sizes = new Set<string>()
   for (const location of stock_by_location) {
-    if (!location || !location.sizes || typeof location.sizes !== "object" || Array.isArray(location.sizes)) return []
+    if (!location || !is_record(location.sizes)) return []
     for (const size of Object.keys(location.sizes)) sizes.add(size)
   }
   return [...sizes]
@@ -29,10 +30,10 @@ export function get_available_quantity_by_size(stock_by_location: StockByLocatio
   for (const location of stock_by_location) {
     if (!location) return null
     if (selected_store && (location.province !== selected_store.province || location.locale_name !== selected_store.locale_name)) continue
-    if (!location.sizes || typeof location.sizes !== "object" || Array.isArray(location.sizes)) return null
+    if (!is_record(location.sizes)) return null
     if (!Object.hasOwn(location.sizes, selected_size)) continue
     const stock = location.sizes[selected_size]
-    if (!stock || !Number.isSafeInteger(stock.stock_quantity) || stock.stock_quantity < 0) return null
+    if (!stock || !is_non_negative_integer(stock.stock_quantity)) return null
     available_quantity = Math.max(available_quantity, stock.stock_quantity)
   }
   return available_quantity

@@ -8,6 +8,7 @@ import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { useAuth } from "@/lib/auth/authContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { reconcile_store_cart } from "@/lib/stores/stores"
+import { is_positive_integer } from "@/lib/shared/utils"
 
 /**
  * Comparte el carrito, valida sus líneas con el catálogo y guarda cada modificación.
@@ -112,7 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
    * @throws Si falla la consulta del catálogo; solicita revalidar el carrito antes de propagar el error.
    */
   async function add_to_cart(product: CartProduct, selected_size: string, quantity?: number): Promise<boolean> {
-    if (quantity !== undefined && (!Number.isSafeInteger(quantity) || quantity < 1)) return false
+    if (quantity !== undefined && !is_positive_integer(quantity)) return false
     const original_cart = current_cart.current
     const store = get_selected_store()
     const item_id = get_cart_item_id(product.sku, selected_size)

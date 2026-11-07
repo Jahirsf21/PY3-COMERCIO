@@ -3,9 +3,9 @@ import type { OrderAvailability, OrderDetails, OrderItem, OrderPagination, Order
 import type { Payment, PaymentResult } from "@/lib/payments/types"
 import { get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_item_subtotal, parse_cart_data } from "@/lib/cart/cart"
 import { get_cart_validation } from "@/lib/catalog/catalog"
-import { is_valid_terms_date, validate_buyer_fields, validate_delivery_fields, validate_terms_acceptance } from "@/lib/checkout/checkout"
+import { validate_buyer_fields, validate_delivery_fields, validate_terms_acceptance } from "@/lib/checkout/checkout"
 import { get_store } from "@/lib/stores/stores"
-import { get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import { get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 
 /**
  * Valida comprador, entrega, stock y precios de una sola sede, sin guardar ni cobrar.
@@ -32,7 +32,7 @@ export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOr
     if (delivery_error) return { status: "rejected", message: delivery_error }
   }
   const terms_error = validate_terms_acceptance(input.terms_accepted_at)
-  if (terms_error || !is_valid_terms_date(input.terms_accepted_at)) return { status: "rejected", message: terms_error ?? "" }
+  if (terms_error || !is_valid_date(input.terms_accepted_at)) return { status: "rejected", message: terms_error ?? "" }
   const terms_acceptance: TermsAcceptance = { accepted: true, acceptedAt: input.terms_accepted_at }
   const cart = parse_cart_data(input.cart)
   if (cart.length === 0 || cart.length !== input.cart.length) {
@@ -132,7 +132,7 @@ function parse_order_delivery(delivery: unknown): DeliveryInfo | null {
  * @returns Aceptación validada, o null si accepted no es true o acceptedAt no es una fecha válida.
  */
 function parse_order_terms_acceptance(terms_acceptance: unknown): TermsAcceptance | null {
-  if (!is_record(terms_acceptance) || terms_acceptance.accepted !== true || !is_valid_terms_date(terms_acceptance.acceptedAt)) return null
+  if (!is_record(terms_acceptance) || terms_acceptance.accepted !== true || !is_valid_date(terms_acceptance.acceptedAt)) return null
   return { accepted: true, acceptedAt: terms_acceptance.acceptedAt }
 }
 
@@ -174,7 +174,7 @@ function parse_order_item(raw_item: unknown, order_id: string): OrderItem | null
  */
 function parse_order_payment(raw_payment: unknown, order: Pick<OrderDetails, "id" | "total" | "currency">): Payment | null {
   if (!is_record(raw_payment) || !is_nonempty_string(raw_payment.id) || raw_payment.order_id !== order.id ||
-    typeof raw_payment.created_at !== "string" || Number.isNaN(Date.parse(raw_payment.created_at)) ||
+    !is_valid_date(raw_payment.created_at) ||
     !is_valid_price(raw_payment.amount) || raw_payment.amount !== order.total ||
     !is_valid_currency(raw_payment.currency) || raw_payment.currency !== order.currency ||
     (raw_payment.status !== "PENDING" && raw_payment.status !== "APPROVE" && raw_payment.status !== "DECLINED" && raw_payment.status !== "ERROR")) {
@@ -209,7 +209,7 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
 
   for (const raw_order of orders_data) {
     if (!is_record(raw_order) || !is_nonempty_string(raw_order.id) || !is_positive_integer(raw_order.order_number) ||
-      typeof raw_order.created_at !== "string" || Number.isNaN(Date.parse(raw_order.created_at)) || !is_valid_currency(raw_order.currency) ||
+      !is_valid_date(raw_order.created_at) || !is_valid_currency(raw_order.currency) ||
       !is_valid_price(raw_order.subtotal) || !is_valid_price(raw_order.tax) || !is_valid_price(raw_order.shipping) || !is_valid_price(raw_order.total) ||
       (raw_order.status !== "PENDING" && raw_order.status !== "CONFIRMED" && raw_order.status !== "CANCELLED") ||
       (raw_order.delivery_method !== "SHIPPING" && raw_order.delivery_method !== "PICKUP") ||
@@ -347,7 +347,7 @@ export function get_order_pagination(items: OrderItem[], requested_page = 1): Or
   const items_per_page = 4
   const total_products = items.length
   const total_pages = Math.ceil(total_products / items_per_page)
-  const valid_page = Number.isSafeInteger(requested_page) && requested_page > 0 ? requested_page : 1
+  const valid_page = is_positive_integer(requested_page) ? requested_page : 1
   const current_page = Math.min(valid_page, Math.max(total_pages, 1))
   const first_item_index = (current_page - 1) * items_per_page
 

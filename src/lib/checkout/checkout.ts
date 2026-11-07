@@ -6,7 +6,7 @@ import {
   validate_identification_type,
   validate_phone_number,
 } from "@/lib/identification/identification"
-import { get_user_storage_key } from "@/lib/shared/utils"
+import { get_user_storage_key, is_valid_date } from "@/lib/shared/utils"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/types"
 
 /**
@@ -59,7 +59,7 @@ function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
     form_data.delivery_method = stored_data.delivery_method
   }
 
-  if ("terms_accepted_at" in stored_data && is_valid_terms_date(stored_data.terms_accepted_at)) {
+  if ("terms_accepted_at" in stored_data && is_valid_date(stored_data.terms_accepted_at)) {
     form_data.terms_accepted_at = stored_data.terms_accepted_at
   }
 
@@ -218,21 +218,12 @@ export function validate_buyer_fields(buyer: BuyerInfo): Partial<Record<keyof Bu
 }
 
 /**
- * Comprueba que un valor sea una fecha válida para registrar la aceptación de los términos.
- * @param value Valor sin validar.
- * @returns true si es un texto que representa una fecha válida.
- */
-export function is_valid_terms_date(value: unknown): value is string {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value))
-}
-
-/**
  * Valida que la persona haya aceptado los Términos y Condiciones y la Política de Privacidad.
  * @param terms_accepted_at Fecha ISO en que se marcó la casilla, o null si está desmarcada.
  * @returns Mensaje de error si la casilla no está marcada; undefined si los términos fueron aceptados.
  */
 export function validate_terms_acceptance(terms_accepted_at: string | null): string | undefined {
-  return is_valid_terms_date(terms_accepted_at) ? undefined
+  return is_valid_date(terms_accepted_at) ? undefined
     : "Debe aceptar los Términos y Condiciones y la Política de Privacidad para continuar."
 }
 
