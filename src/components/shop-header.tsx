@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { ChartColumnIcon, UserIcon } from "lucide-react"
+import { UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ActiveUserInfo } from "@/features/auth/components/ActiveUserInfo"
 import { CartIndicator } from "@/features/cart/components/CartIndicator"
@@ -8,8 +8,9 @@ import { useAuth } from "@/lib/auth/authContext"
 import { cn } from "@/lib/shared/utils"
 
 /**
- * Encabezado de la tienda con el logo, el selector de tienda, el acceso a Analytics, el carrito y el usuario activo.
- * El usuario activo aparece como un botón con sus iniciales junto al carrito; al presionarlo muestra su información.
+ * Encabezado de la tienda con el logo, el selector de tienda, el carrito y el usuario activo.
+ * El usuario activo aparece como un botón con sus iniciales junto al carrito; al presionarlo muestra su información
+ * y el acceso a las métricas de uso.
  * Sin sesión muestra el botón "Cuenta", que lleva al inicio de sesión, salvo en la propia pantalla de inicio de sesión.
  * @param props Propiedades del encabezado.
  * @param props.sticky Indica si el encabezado queda fijo al desplazarse.
@@ -31,16 +32,6 @@ export function ShopHeader({ sticky = false }: { sticky?: boolean }) {
       <div className="flex min-w-0 items-center gap-3">
         <div className="min-w-0"><StoreSelector className="w-auto max-w-44 sm:w-auto sm:max-w-60" /></div>
         <nav aria-label="Navegación de la tienda" className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link to="/analytics" aria-current={location.pathname === "/analytics" ? "page" : undefined} />}
-            aria-label="Analytics"
-            className="h-10 cursor-pointer gap-2 px-3"
-          >
-            <ChartColumnIcon aria-hidden="true" className="size-5" />
-            <span className="hidden sm:inline">Analytics</span>
-          </Button>
           <CartIndicator />
           {user && <ActiveUserInfo user={user} />}
           {!user && !is_login_page && (

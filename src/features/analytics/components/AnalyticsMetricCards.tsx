@@ -22,7 +22,7 @@ function format_count(count: number, singular: string, plural: string): string {
 }
 
 /**
- * Tarjetas con las cuatro métricas de Analytics: productos visualizados, búsquedas, agregados al carrito y compras.
+ * Tarjetas con las cuatro métricas de uso: productos visualizados, búsquedas, agregados al carrito y compras.
  * @param props Propiedades del componente.
  * @param props.metrics Métricas calculadas con get_analytics_metrics().
  * @param props.label Nombre accesible de la lista de tarjetas.
@@ -36,14 +36,14 @@ export function AnalyticsMetricCards({ metrics, label }: { metrics: AnalyticsMet
       detail: format_count(metrics.unique_products_viewed, "producto distinto", "productos distintos"),
       icon: EyeIcon,
     },
-    { title: "Búsquedas realizadas", value: metrics.searches, detail: "En el buscador del catálogo", icon: SearchIcon },
+    { title: "Búsquedas realizadas", value: metrics.searches, detail: "Búsquedas que hiciste en el catálogo", icon: SearchIcon },
     {
       title: "Agregados al carrito",
       value: metrics.add_to_cart,
       detail: format_count(metrics.added_units, "unidad", "unidades"),
       icon: ShoppingCartIcon,
     },
-    { title: "Compras realizadas", value: metrics.purchases, detail: "Con pago aprobado", icon: ShoppingBagIcon },
+    { title: "Compras realizadas", value: metrics.purchases, detail: "Compras con el pago aprobado", icon: ShoppingBagIcon },
   ]
 
   return (

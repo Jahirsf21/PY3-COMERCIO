@@ -13,7 +13,7 @@ const event_series: { type: AnalyticsEventType; label: string; color: string }[]
   { type: "product_view", label: "Vistas de producto", color: "bg-[#2a78d6] dark:bg-[#3987e5]" },
   { type: "search", label: "Búsquedas", color: "bg-[#eb6834] dark:bg-[#d95926]" },
   { type: "add_to_cart", label: "Agregados al carrito", color: "bg-[#1baf7a] dark:bg-[#199e70]" },
-  { type: "checkout_start", label: "Inicios de checkout", color: "bg-[#eda100] dark:bg-[#c98500]" },
+  { type: "checkout_start", label: "Inicios del proceso de compra", color: "bg-[#eda100] dark:bg-[#c98500]" },
   { type: "purchase", label: "Compras", color: "bg-[#e87ba4] dark:bg-[#d55181]" },
   { type: "login", label: "Inicios de sesión", color: "bg-[#008300] dark:bg-[#008300]" },
 ]
@@ -73,19 +73,19 @@ export function DailyEventsChart({ days }: { days: DailyEventCount[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Eventos por día</CardTitle>
+        <CardTitle>Actividad por día</CardTitle>
         <CardDescription>
-          Últimos 7 días · {week_total.toLocaleString("es-CR")} {week_total === 1 ? "evento" : "eventos"} en total
+          Últimos 7 días · {week_total.toLocaleString("es-CR")} {week_total === 1 ? "acción registrada" : "acciones registradas"} en total
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {week_total === 0 ? (
           <p className="flex h-48 items-center justify-center rounded-lg border border-dashed border-input px-4 text-center text-sm text-muted-foreground">
-            Todavía no hay eventos en los últimos 7 días.
+            Todavía no hay actividad registrada en los últimos 7 días.
           </p>
         ) : (
           <>
-            <ul aria-label="Tipos de evento" className="flex flex-wrap gap-x-4 gap-y-1.5">
+            <ul aria-label="Tipos de acción" className="flex flex-wrap gap-x-4 gap-y-1.5">
               {event_series.map(({ type, label, color }) => (
                 <li key={type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <SeriesSwatch color={color} />
@@ -111,7 +111,7 @@ export function DailyEventsChart({ days }: { days: DailyEventCount[] }) {
                     </TooltipTrigger>
                     <TooltipContent className="flex-col items-start gap-1">
                       <span className="font-semibold first-letter:uppercase">{format_long_day(day.date)}</span>
-                      {day.total === 0 && <span>Sin eventos</span>}
+                      {day.total === 0 && <span>Sin actividad registrada</span>}
                       {day.total > 0 && event_series.filter(({ type }) => day.counts[type] > 0).map(({ type, label, color }) => (
                         <span key={type} className="flex w-full items-center gap-1.5">
                           <SeriesSwatch color={color} />
@@ -139,7 +139,7 @@ export function DailyEventsChart({ days }: { days: DailyEventCount[] }) {
           <CollapsibleContent className="pt-3">
             <div className="overflow-x-auto rounded-lg border border-input">
               <table className="w-full min-w-xl text-left text-xs">
-                <caption className="sr-only">Eventos registrados por día y por tipo en los últimos 7 días</caption>
+                <caption className="sr-only">Acciones registradas por día y por tipo en los últimos 7 días</caption>
                 <thead className="bg-muted/50 text-muted-foreground">
                   <tr>
                     <th scope="col" className="px-3 py-2 font-medium">Día</th>
