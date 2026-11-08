@@ -20,16 +20,9 @@ type PaymentFeedback = {
   message: string
 }
 
-/**
- * Muestra el pago y la confirmación de una orden recuperada mediante su identificador.
- * Usa la orden guardada para funcionar al recargar o con el carrito vacío.
- * Permite reintentar el guardado de un resultado sin repetir el pago ni anunciar una confirmación todavía no persistida.
- * Reemplaza la ruta de pago por el detalle cuando la orden ya está confirmada o cancelada y guardada.
- * @returns Página de pago, confirmación o aviso si la orden no está disponible.
- */
 export default function PaymentPage() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { get_order, storage_error, notice, dismiss_notice, unsaved_order_ids, retry_save_orders } = useOrders()
+  const { get_order, storage_error, unsaved_order_ids, retry_save_orders } = useOrders()
   const [feedback, set_feedback] = useState<PaymentFeedback | null>(null)
   const [dismissed_notice_key, set_dismissed_notice_key] = useState<string | null>(null)
   const order = orderId ? get_order(orderId) : undefined
@@ -50,9 +43,9 @@ export default function PaymentPage() {
         : "El pago se interrumpió o no pudo completarse. Puedes intentarlo nuevamente.",
     } : storage_error ? {
       key: "storage",
-      title: "No pudimos guardar o recuperar tus pedidos",
+      title: "No pudimos guardar tus pedidos",
       message: "Revisa los permisos de almacenamiento de tu navegador antes de continuar.",
-    } : notice ? { key: `notice:${notice}`, title: "Revisa tus pedidos", message: notice } : null
+    } : null
 
   /**
    * Presenta los resultados no aprobados en un aviso emergente asociado al intento vigente.
@@ -81,7 +74,6 @@ export default function PaymentPage() {
   function change_notice_open(open: boolean): void {
     if (open || !current_notice) return
     set_dismissed_notice_key(current_notice.key)
-    if (current_notice.key.startsWith("notice:")) dismiss_notice()
   }
 
   if (order && !has_unsaved_result && (is_confirmed || order.status === "CANCELLED")) {

@@ -1,6 +1,7 @@
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
-import { get_suggestion_categories, is_product_suggestion_available } from "@/lib/shared/utils"
+import { get_filter_value, get_suggestion_categories, is_product_suggestion_available } from "@/lib/shared/utils"
+import type { Store } from "@/lib/stores/types"
 
 /**
  * Consulta hasta 20 productos sugeridos que comparten alguna categoría con los productos recibidos.
@@ -10,15 +11,16 @@ import { get_suggestion_categories, is_product_suggestion_available } from "@/li
  * Recorre las páginas hasta completar 20 sugerencias o agotar los resultados.
  * @param category_names Categorías de los productos de origen.
  * @param product_ids Identificadores de los productos que se excluyen.
+ * @param selected_store Tienda en la que deben estar disponibles las sugerencias; null usa el mayor stock de una sede.
  * @returns Hasta 20 variantes sugeridas; vacío si no hay categorías válidas o productos disponibles.
  * @throws Si falla una consulta a Algolia o su respuesta no contiene resultados válidos.
  */
-export async function get_suggestions(category_names: string[], product_ids: string[]): Promise<ProductHit[]> {
+export async function get_suggestions(category_names: string[], product_ids: string[], selected_store: Store | null = null): Promise<ProductHit[]> {
   const categories = get_suggestion_categories(category_names)
   if (categories.length === 0) return []
-  const category_filters = categories.map((category_name) => `categories:${JSON.stringify(category_name)}`)
+  const category_filters = categories.map((category_name) => `categories:${get_filter_value(category_name)}`)
   const excluded_product_ids = new Set(product_ids)
-  const excluded_product_filters = [...excluded_product_ids].map((product_id) => `NOT product_id:${JSON.stringify(product_id)}`)
+  const excluded_product_filters = [...excluded_product_ids].map((product_id) => `NOT product_id:${get_filter_value(product_id)}`)
   const suggestion_filters = [
     `(${category_filters.join(" OR ")})`,
     ...excluded_product_filters,
@@ -47,7 +49,7 @@ export async function get_suggestions(category_names: string[], product_ids: str
     for (const product of suggestion_result.hits as ProductHit[]) {
       if (!product || typeof product.product_id !== "string" || !product.product_id.trim() || !Array.isArray(product.categories) || excluded_product_ids.has(product.product_id) || suggested_product_ids.has(product.product_id)) continue
       const has_matching_category = get_suggestion_categories(product.categories).some((category_name) => matching_categories.has(category_name.toLocaleLowerCase("es")))
-      if (!has_matching_category || !is_product_suggestion_available(product)) continue
+      if (!has_matching_category || !is_product_suggestion_available(product, selected_store)) continue
       suggested_product_ids.add(product.product_id)
       suggested_products.push(product)
       if (suggested_products.length === suggestion_limit) break

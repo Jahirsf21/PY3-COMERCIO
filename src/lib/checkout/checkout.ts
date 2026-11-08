@@ -6,14 +6,17 @@ import {
   validate_identification_type,
   validate_phone_number,
 } from "@/lib/identification/identification"
+import { get_user_storage_key, is_valid_date } from "@/lib/shared/utils"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/types"
 
 /**
  * Construye los valores iniciales del formulario de compra.
  * Selecciona Nacional como tipo de identificación y Costa Rica como país de entrega.
+ * La aceptación de los términos empieza desmarcada y nunca se marca automáticamente.
  * @returns Datos iniciales del formulario.
  *   buyer: información de identificación y contacto, con Nacional seleccionado y los demás campos vacíos.
  *   delivery: dirección de entrega, con Costa Rica seleccionado y los demás campos vacíos.
+ *   terms_accepted_at: null, porque los términos todavía no se han aceptado.
  */
 export function create_checkout_form_data(): CheckoutFormData {
   return {
@@ -26,6 +29,7 @@ export function create_checkout_form_data(): CheckoutFormData {
       phone_number: "",
       alternative_phone_number: "",
     },
+    delivery_method: null,
     delivery: {
       country: "Costa Rica",
       province: "",
@@ -35,6 +39,7 @@ export function create_checkout_form_data(): CheckoutFormData {
       postal_code: "",
       additional_information: "",
     },
+    terms_accepted_at: null,
   }
 }
 
@@ -42,12 +47,21 @@ export function create_checkout_form_data(): CheckoutFormData {
  * Valida campo por campo los datos guardados del formulario de compra.
  * Usa los valores iniciales para los campos ausentes o con un tipo incorrecto.
  * Conserva solo los dígitos de la identificación, los teléfonos y el código postal, y limita su longitud.
+ * Recupera la aceptación de los términos solo si es una fecha ISO válida, para conservar la casilla marcada en el borrador.
  * @param stored_data Datos guardados sin validar.
  * @returns Datos del formulario validados.
  */
 function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
   const form_data = create_checkout_form_data()
   if (!stored_data || typeof stored_data !== "object" || Array.isArray(stored_data)) return form_data
+
+  if ("delivery_method" in stored_data && (stored_data.delivery_method === "SHIPPING" || stored_data.delivery_method === "PICKUP")) {
+    form_data.delivery_method = stored_data.delivery_method
+  }
+
+  if ("terms_accepted_at" in stored_data && is_valid_date(stored_data.terms_accepted_at)) {
+    form_data.terms_accepted_at = stored_data.terms_accepted_at
+  }
 
   if ("buyer" in stored_data && stored_data.buyer && typeof stored_data.buyer === "object" && !Array.isArray(stored_data.buyer)) {
     const buyer = stored_data.buyer
@@ -109,37 +123,43 @@ function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
 }
 
 /**
- * Obtiene los datos del formulario guardados en localStorage y los valida mediante parse_checkout_form_data().
- * @returns Datos del formulario, o los valores iniciales si no se pueden leer o el JSON es inválido.
+ * Obtiene el borrador del formulario de compra de un usuario y lo valida mediante parse_checkout_form_data().
+ * @param user_id Identificador del usuario con sesión iniciada, o null si no hay sesión.
+ * @returns Datos del formulario, o los valores iniciales si no hay sesión, no se pueden leer o el JSON es inválido.
  */
-export function get_stored_checkout_form_data(): CheckoutFormData {
+export function get_stored_checkout_form_data(user_id: string | null): CheckoutFormData {
+  if (!user_id) return create_checkout_form_data()
   try {
-    return parse_checkout_form_data(JSON.parse(window.localStorage.getItem("space-shop-checkout") ?? "null"))
+    return parse_checkout_form_data(JSON.parse(window.localStorage.getItem(get_user_storage_key("space-shop-checkout", user_id)) ?? "null"))
   } catch {
     return create_checkout_form_data()
   }
 }
 
 /**
- * Guarda los datos del formulario de compra en localStorage.
+ * Guarda el borrador del formulario de compra de un usuario en localStorage. Sin sesión no guarda nada.
+ * @param user_id Identificador del usuario dueño del borrador, o null si no hay sesión.
  * @param form_data Información del comprador y la entrega.
  * @returns No retorna ningún valor.
  */
-export function save_checkout_form_data(form_data: CheckoutFormData): void {
+export function save_checkout_form_data(user_id: string | null, form_data: CheckoutFormData): void {
+  if (!user_id) return
   try {
-    window.localStorage.setItem("space-shop-checkout", JSON.stringify(form_data))
+    window.localStorage.setItem(get_user_storage_key("space-shop-checkout", user_id), JSON.stringify(form_data))
   } catch {
     return
   }
 }
 
 /**
- * Elimina los datos del formulario guardados en localStorage.
+ * Elimina el borrador del formulario de compra de un usuario guardado en localStorage.
+ * @param user_id Identificador del usuario dueño del borrador, o null si no hay sesión.
  * @returns No retorna ningún valor.
  */
-export function clear_stored_checkout_form_data(): void {
+export function clear_stored_checkout_form_data(user_id: string | null): void {
+  if (!user_id) return
   try {
-    window.localStorage.removeItem("space-shop-checkout")
+    window.localStorage.removeItem(get_user_storage_key("space-shop-checkout", user_id))
   } catch {
     return
   }
@@ -195,6 +215,16 @@ export function validate_buyer_fields(buyer: BuyerInfo): Partial<Record<keyof Bu
     if (!validation_result.valid) field_errors[field_name as keyof BuyerInfo] = validation_result.error
   }
   return field_errors
+}
+
+/**
+ * Valida que la persona haya aceptado los Términos y Condiciones y la Política de Privacidad.
+ * @param terms_accepted_at Fecha ISO en que se marcó la casilla, o null si está desmarcada.
+ * @returns Mensaje de error si la casilla no está marcada; undefined si los términos fueron aceptados.
+ */
+export function validate_terms_acceptance(terms_accepted_at: string | null): string | undefined {
+  return is_valid_date(terms_accepted_at) ? undefined
+    : "Debe aceptar los Términos y Condiciones y la Política de Privacidad para continuar."
 }
 
 /**

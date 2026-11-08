@@ -1,0 +1,41 @@
+[
+  {
+    "objectID": "user-b2c-001",
+    "username": "maria.rojas",
+    "password": "SpaceB2C#1",
+    "full_name": "María Rojas",
+    "role": "B2C"
+  },
+  {
+    "objectID": "user-b2c-002",
+    "username": "carlos.mora",
+    "password": "SpaceB2C#2",
+    "full_name": "Carlos Mora",
+    "role": "B2C"
+  },
+  {
+    "objectID": "user-b2b-001",
+    "username": "compras.deportivacr",
+    "password": "SpaceB2B#1",
+    "full_name": "Laura Jiménez",
+    "role": "B2B",
+    "company": {
+      "name": "Deportiva CR S.A.",
+      "legal_id": "3-101-456789"
+    }
+  },
+  {
+    "objectID": "user-admin-001",
+    "username": "admin",
+    "password": "SpaceAdmin#1",
+    "full_name": "Jahir Sanchez Funez",
+    "role": "ADMIN"
+  },
+  {
+    "objectID": "user-invalid-role-001",
+    "username": "sin.rol",
+    "password": "SpaceNoRole#1",
+    "full_name": "Usuario Sin Rol",
+    "role": "SUPERVISOR"
+  }
+]

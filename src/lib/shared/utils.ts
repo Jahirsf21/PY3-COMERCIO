@@ -2,7 +2,8 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { CartQuantityLimits } from "@/lib/cart/types"
 import type { ProductImage, ProductRecord } from "@/lib/catalog/types"
-import type { StoredJsonResult } from "@/lib/shared/types"
+import { get_available_quantity_by_size, get_sizes_from_stock } from "@/lib/catalog/stock"
+import type { Store } from "@/lib/stores/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -36,12 +37,48 @@ export function is_positive_integer(value: unknown): value is number {
 }
 
 /**
+ * Comprueba que un valor sea un entero seguro mayor o igual que cero.
+ * @param value Valor que se desea comprobar.
+ * @returns true si el valor es un entero no negativo.
+ */
+export function is_non_negative_integer(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+}
+
+/**
+ * Comprueba que un valor sea un arreglo de textos no vacíos.
+ * @param value Valor que se desea comprobar.
+ * @returns true si todos los elementos son textos con contenido.
+ */
+export function is_string_list(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(is_nonempty_string)
+}
+
+/**
+ * Prepara un texto para usarlo como valor en un filtro de Algolia, entre comillas y con las comillas y barras escapadas.
+ * @param value Texto que se desea filtrar, por ejemplo un product_id o un username.
+ * @returns Valor entre comillas listo para un filtro, por ejemplo "basketball-shoes-0001".
+ */
+export function get_filter_value(value: string): string {
+  return JSON.stringify(value)
+}
+
+/**
  * Comprueba que un valor sea un código de moneda de tres letras mayúsculas.
  * @param value Valor que se desea comprobar.
  * @returns true si el código tiene el formato esperado.
  */
 export function is_valid_currency(value: unknown): value is string {
   return typeof value === "string" && /^[A-Z]{3}$/.test(value)
+}
+
+/**
+ * Comprueba que un valor sea un texto con una fecha válida.
+ * @param value Valor que se desea comprobar.
+ * @returns true si el valor es un texto que representa una fecha válida.
+ */
+export function is_valid_date(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value))
 }
 
 /**
@@ -70,24 +107,25 @@ export function is_valid_image(value: unknown): value is ProductImage {
 }
 
 /**
+ * Construye la clave de localStorage de un dato que pertenece a un usuario.
+ * @param storage_key Clave base, por ejemplo space-shop-cart.
+ * @param user_id Identificador del usuario dueño del dato.
+ * @returns Clave con el formato <clave>:<user_id>.
+ */
+export function get_user_storage_key(storage_key: string, user_id: string): string {
+  return `${storage_key}:${user_id}`
+}
+
+/**
  * Obtiene y convierte un JSON guardado en localStorage.
  * @param storage_key Clave de localStorage.
- * @returns Resultado de la lectura.
- *   status: ok si se convirtió el contenido; empty si la clave no existe; invalid_json si el contenido no es un JSON válido; storage_error si el navegador impide leer localStorage.
- *   data: contenido convertido, solo cuando status es ok.
+ * @returns Contenido guardado, o null si no existe o no se puede leer.
  */
-export function get_stored_json(storage_key: string): StoredJsonResult {
-  let stored_json: string | null
+export function get_stored_json(storage_key: string): unknown {
   try {
-    stored_json = window.localStorage.getItem(storage_key)
+    return JSON.parse(window.localStorage.getItem(storage_key) ?? "null")
   } catch {
-    return { status: "storage_error" }
-  }
-  if (stored_json === null) return { status: "empty" }
-  try {
-    return { status: "ok", data: JSON.parse(stored_json) }
-  } catch {
-    return { status: "invalid_json" }
+    return null
   }
 }
 
@@ -151,10 +189,10 @@ export function get_suggestion_categories(category_names: string[]): string[] {
  * @param available_quantity Stock disponible de la talla.
  * @returns Límites de cantidad, o null si las reglas o el stock son inválidos.
  */
-export function get_product_quantity_limits(product: Pick<ProductRecord, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">, available_quantity: number): CartQuantityLimits | null {
+export function get_product_quantity_limits(product: Pick<ProductRecord, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">, available_quantity: number | null): CartQuantityLimits | null {
   const { b2c_min_order_quantity: min_quantity, b2c_max_order_quantity, b2c_step_quantity: step_quantity } = product
   if (![min_quantity, b2c_max_order_quantity, step_quantity].every((rule_quantity) => Number.isSafeInteger(rule_quantity) && rule_quantity > 0)) return null
-  if (b2c_max_order_quantity < min_quantity || !Number.isSafeInteger(available_quantity) || available_quantity < 0) return null
+  if (available_quantity === null || b2c_max_order_quantity < min_quantity || !Number.isSafeInteger(available_quantity) || available_quantity < 0) return null
   const quantity_cap = Math.min(b2c_max_order_quantity, available_quantity)
   const max_quantity = quantity_cap < min_quantity ? 0 : min_quantity + Math.floor((quantity_cap - min_quantity) / step_quantity) * step_quantity
   return { min_quantity, max_quantity, step_quantity }
@@ -162,22 +200,17 @@ export function get_product_quantity_limits(product: Pick<ProductRecord, "b2c_mi
 
 /**
  * Comprueba si un producto se vende en B2C y tiene al menos una talla con stock suficiente para comprarlo.
- * Suma el stock disponible de cada talla en todos los locales y calcula sus límites con get_product_quantity_limits().
+ * Usa la tienda elegida o el mayor stock de una sola sede para cada talla.
  * @param product Variante candidata a sugerencia.
+ * @param selected_store Local elegido; null permite usar el mayor stock de una sede.
  * @returns true si al menos una talla permite una compra; false si no se vende en B2C o el stock es inconsistente.
  */
-export function is_product_suggestion_available(product: ProductRecord): boolean {
+export function is_product_suggestion_available(product: ProductRecord, selected_store: Store | null = null): boolean {
   if (!Array.isArray(product.sales_channels) || !product.sales_channels.includes("b2c") || !Array.isArray(product.b2c_stock_by_location)) return false
-  const available_by_size = new Map<string, number>()
-  for (const location of product.b2c_stock_by_location) {
-    if (!location || !location.sizes || typeof location.sizes !== "object" || Array.isArray(location.sizes)) return false
-    for (const [size, size_stock] of Object.entries(location.sizes)) {
-      if (!size_stock || !Number.isSafeInteger(size_stock.stock_quantity) || !Number.isSafeInteger(size_stock.reserved_quantity) || size_stock.stock_quantity < 0 || size_stock.reserved_quantity < 0 || size_stock.reserved_quantity > size_stock.stock_quantity) return false
-      const available_quantity = size_stock.stock_quantity - size_stock.reserved_quantity
-      available_by_size.set(size, (available_by_size.get(size) ?? 0) + available_quantity)
-    }
-  }
-  return [...available_by_size.values()].some((available_quantity) => {
+  const available_quantities = get_sizes_from_stock(product.b2c_stock_by_location)
+    .map((size) => get_available_quantity_by_size(product.b2c_stock_by_location, size, selected_store))
+  if (available_quantities.some((quantity) => quantity === null)) return false
+  return available_quantities.some((available_quantity) => {
     const limits = get_product_quantity_limits(product, available_quantity)
     return limits !== null && limits.max_quantity >= limits.min_quantity
   })

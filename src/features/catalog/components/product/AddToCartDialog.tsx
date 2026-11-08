@@ -11,10 +11,12 @@ import { useCart } from "@/lib/cart/cartContext"
 import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
 import type { ProductHit, VariantsResult } from "@/lib/catalog/types"
 import { cn, format_price } from "@/lib/shared/utils"
+import { useStores } from "@/lib/stores/storesContext"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const id = useId()
   const { cart, add_to_cart } = useCart()
+  const { selected_store } = useStores()
   const [open, setOpen] = useState(false)
   const [result, setResult] = useState<VariantsResult>()
   const [selectedSku, setSelectedSku] = useState(hit.sku)
@@ -44,10 +46,10 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const locations = selectedVariant?.b2c_stock_by_location ?? []
   const sizes = get_sizes_from_stock(locations)
   const availableSizes = sizes.filter((size) => {
-    const limits = selectedVariant ? get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(locations, size)) : null
+    const limits = selectedVariant ? get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(locations, size, selected_store)) : null
     return limits !== null && limits.max_quantity >= limits.min_quantity
   }).length
-  const availableQuantity = selectedSize ? get_available_quantity_by_size(locations, selectedSize) : 0
+  const availableQuantity = selectedSize ? get_available_quantity_by_size(locations, selectedSize, selected_store) : 0
   const cartQuantity = selectedVariant && selectedSize
     ? cart.find((item) => item.id === get_cart_item_id(selectedVariant.sku, selectedSize))?.quantity ?? 0
     : 0
@@ -103,7 +105,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
           render={<Button className="w-full cursor-pointer" size="lg" />}
         >
           <ShoppingCartIcon aria-hidden="true" />
-          Agregar al carrito
+          <span>Agregar<span className="hidden sm:inline"> al carrito</span></span>
         </DialogTrigger>
         <DialogContent showCloseButton={false} className="flex max-h-[90dvh] flex-col overflow-hidden p-5 sm:max-w-lg sm:p-6 motion-reduce:animate-none">
           <DialogHeader className="shrink-0 pr-10">
@@ -194,7 +196,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {sizes.map((size) => {
-                        const sizeLimits = selectedVariant ? get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(locations, size)) : null
+                        const sizeLimits = selectedVariant ? get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(locations, size, selected_store)) : null
                         const isAvailable = sizeLimits !== null && sizeLimits.max_quantity >= sizeLimits.min_quantity
                         return (
                           <button

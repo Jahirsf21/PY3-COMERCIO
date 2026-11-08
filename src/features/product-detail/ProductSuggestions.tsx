@@ -4,32 +4,27 @@ import { Button } from "@/components/ui/button"
 import { get_product_suggestions } from "@/lib/catalog/catalog"
 import type { ProductRecord, ProductSuggestionsResult } from "@/lib/catalog/types"
 import { get_suggestion_categories } from "@/lib/shared/utils"
+import { useStores } from "@/lib/stores/storesContext"
 
 type ProductSuggestionsProps = {
   product: Pick<ProductRecord, "product_id" | "categories">
 }
 
-/**
- * Muestra hasta 20 sugerencias según las categorías del producto, en grupos de 4.
- * Consulta las sugerencias con get_product_suggestions() y permite reintentar si falla la consulta.
- * @param props Propiedades del componente.
- * @param props.product Identificador y categorías del producto.
- * @returns Sección de sugerencias con sus estados de carga, error y sin resultados.
- */
 export function ProductSuggestions({ product }: ProductSuggestionsProps) {
+  const { selected_store } = useStores()
   const [retry_count, set_retry_count] = useState(0)
   const [suggestion_result, set_suggestion_result] = useState<ProductSuggestionsResult | null>(null)
   const product_key = JSON.stringify({
     product_id: product.product_id,
     categories: get_suggestion_categories(product.categories).sort(),
   })
-  const request_key = `${product_key}:${retry_count}`
+  const request_key = `${product_key}:${selected_store?.id ?? "none"}:${retry_count}`
 
   useEffect(() => {
     const suggestion_product: ProductSuggestionsProps["product"] = JSON.parse(product_key)
     let is_effect_active = true
 
-    get_product_suggestions(suggestion_product)
+    get_product_suggestions(suggestion_product, selected_store)
       .then((products) => {
         if (is_effect_active) set_suggestion_result({ request_key, products, has_error: false })
       })
@@ -38,7 +33,7 @@ export function ProductSuggestions({ product }: ProductSuggestionsProps) {
       })
 
     return () => { is_effect_active = false }
-  }, [product_key, request_key])
+  }, [product_key, request_key, selected_store])
 
   const is_loading = suggestion_result?.request_key !== request_key
   const has_error = !is_loading && suggestion_result.has_error

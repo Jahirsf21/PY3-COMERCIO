@@ -30,9 +30,26 @@ export type DeliveryInfo = {
 }
 
 /**
- * Datos del formulario de compra que agrupan la información del comprador y la entrega
+ * Modalidad para recibir el pedido; la dirección solo es obligatoria para envío.
+ */
+export type DeliveryMethod = "SHIPPING" | "PICKUP"
+
+/**
+ * Registro de la aceptación de los Términos y Condiciones y la Política de Privacidad.
+ * acceptedAt es la fecha y hora ISO en que la persona marcó la casilla.
+ */
+export type TermsAcceptance = {
+    accepted: true
+    acceptedAt: string
+}
+
+/**
+ * Datos editables del comprador y entrega; la modalidad empieza sin seleccionar.
+ * terms_accepted_at empieza en null (casilla desmarcada) y guarda la fecha ISO en que se marcó la casilla.
  */
 export type CheckoutFormData = {
     buyer: BuyerInfo
+    delivery_method: DeliveryMethod | null
     delivery: DeliveryInfo
+    terms_accepted_at: string | null
 }

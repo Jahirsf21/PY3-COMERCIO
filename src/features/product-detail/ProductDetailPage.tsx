@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 import { CheckIcon, MapPinIcon, PackageCheckIcon, StarIcon } from "lucide-react"
 import { cn } from "cn"
@@ -9,6 +9,8 @@ import { AddToCartForm } from "@/features/product-detail/AddToCartForm"
 import { ProductSuggestions } from "@/features/product-detail/ProductSuggestions"
 import { ShopHeader } from "@/components/shop-header"
 import { format_price } from "@/lib/shared/utils"
+import { useStores } from "@/lib/stores/storesContext"
+import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
 function ProductDetailSkeleton() {
   return (
@@ -29,6 +31,9 @@ function ProductDetailSkeleton() {
 }
 
 export default function ProductDetailPage() {
+  const { selected_store } = useStores()
+  const { track_event } = useAnalytics()
+  const tracked_view_sku = useRef<string | null>(null)
   const { productId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [result, setResult] = useState<VariantsResult>();
@@ -75,6 +80,17 @@ export default function ProductDetailPage() {
       ? requestedSize
       : null;
 
+  useEffect(() => {
+    if (!selectedVariant || tracked_view_sku.current === selectedVariant.sku) return
+    tracked_view_sku.current = selectedVariant.sku
+    track_event("product_view", {
+      product_id: selectedVariant.product_id,
+      sku: selectedVariant.sku,
+      title: selectedVariant.title,
+      categories: selectedVariant.categories,
+    })
+  }, [selectedVariant, track_event])
+
   if (isLoading) {
     return (
       <div className="min-h-dvh bg-background">
@@ -112,10 +128,10 @@ export default function ProductDetailPage() {
     ? selectedVariant.b2c_price * (1 - discount.percentage / 100)
     : selectedVariant.b2c_price;
   const availableSizes = sizes.filter((size) => {
-    const limits = get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(stockByLocation, size));
+    const limits = get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(stockByLocation, size, selected_store));
     return limits !== null && limits.max_quantity >= limits.min_quantity;
   }).length;
-  const availableQuantity = selectedSize ? get_available_quantity_by_size(stockByLocation, selectedSize) : 0;
+  const availableQuantity = selectedSize ? get_available_quantity_by_size(stockByLocation, selectedSize, selected_store) : 0;
   const quantityLimits = get_cart_quantity_limits(selectedVariant, availableQuantity);
   const isAvailable = quantityLimits !== null && quantityLimits.max_quantity >= quantityLimits.min_quantity;
 
@@ -286,7 +302,7 @@ export default function ProductDetailPage() {
             </div>
 
             <AddToCartForm
-              key={`${selectedVariant.product_id}::${selectedVariant.sku}::${selectedSize ?? ""}`}
+              key={`${selectedVariant.product_id}::${selectedVariant.sku}::${selectedSize ?? ""}::${selected_store?.id ?? "none"}`}
               product={selectedVariant}
               selectedSize={selectedSize}
               availableQuantity={availableQuantity}
@@ -346,7 +362,7 @@ export default function ProductDetailPage() {
                     </div>
                     <span className="flex items-center gap-1 whitespace-nowrap">
                       <CheckIcon aria-hidden="true" className="size-4" />
-                      {get_available_quantity_by_size([location], selectedSize)} disponibles
+                      {get_available_quantity_by_size([location], selectedSize) ?? "—"} disponibles
                     </span>
                   </li>
                 ))}

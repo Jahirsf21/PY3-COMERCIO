@@ -17,7 +17,7 @@ export function ProductImagePreview({ image, title }: ProductImagePreviewProps) 
           alt={image.alt}
           loading="lazy"
           decoding="async"
-          className="h-40 w-full rounded-md object-cover"
+          className="aspect-square w-full rounded-md object-cover sm:aspect-auto sm:h-40"
         />
         <DialogTrigger
           aria-label={`Ampliar foto de ${title}`}

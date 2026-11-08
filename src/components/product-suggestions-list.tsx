@@ -8,6 +8,7 @@ import type { ProductHit } from "@/lib/catalog/types"
 type ProductSuggestionsListProps = {
   products: ProductHit[]
   title: ReactNode
+  list_label?: string
 }
 
 /**
@@ -15,9 +16,10 @@ type ProductSuggestionsListProps = {
  * @param props Propiedades del componente.
  * @param props.products Variantes sugeridas.
  * @param props.title Encabezado de la sección.
+ * @param props.list_label Nombre accesible de la lista; por defecto, "Productos sugeridos".
  * @returns Encabezado con los controles y el grupo de sugerencias seleccionado.
  */
-export function ProductSuggestionsList({ products, title }: ProductSuggestionsListProps) {
+export function ProductSuggestionsList({ products, title, list_label = "Productos sugeridos" }: ProductSuggestionsListProps) {
   const list_id = useId()
   const [requested_page, set_requested_page] = useState(1)
   const items_per_page = 4
@@ -41,7 +43,7 @@ export function ProductSuggestionsList({ products, title }: ProductSuggestionsLi
       <div className="flex items-center justify-between gap-4">
         {title}
         {total_pages > 1 && (
-          <div role="group" aria-label="Navegación de productos sugeridos" className="flex shrink-0 items-center gap-2">
+          <div role="group" aria-label={`Navegación de ${list_label.toLocaleLowerCase("es")}`} className="flex shrink-0 items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -70,7 +72,7 @@ export function ProductSuggestionsList({ products, title }: ProductSuggestionsLi
           </div>
         )}
       </div>
-      <ul id={list_id} aria-label="Productos sugeridos" className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <ul id={list_id} aria-label={list_label} className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {page_products.map((product) => (
           <li key={product.product_id} className="grid min-w-0">
             <ProductCard hit={product} />
