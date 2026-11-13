@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import { CartPreview } from "@/features/cart/components/CartPreview"
 import { useCart } from "@/lib/cart/cartContext"
+import { useAuth } from "@/lib/auth/authContext"
 
 export function CartIndicator() {
+  const { user } = useAuth()
   const { total_items: totalUnits } = useCart()
   const [open, setOpen] = useState(false)
   const isCartPage = useMatch("/carrito") !== null
@@ -20,6 +22,8 @@ export function CartIndicator() {
       </span>
     </>
   )
+
+  if (user?.role === "ADMIN") return null
 
   if (isCartPage) {
     return (

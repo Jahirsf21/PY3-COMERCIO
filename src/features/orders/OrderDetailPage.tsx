@@ -10,6 +10,7 @@ import { PaymentConfirmation } from "@/features/payments/components/PaymentConfi
 import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrderSummary"
 import { format_order_date, get_order_availability } from "@/lib/orders/orders"
 import { useOrders } from "@/lib/orders/ordersContext"
+import { useAuth } from "@/lib/auth/authContext"
 
 /**
  * Recupera un pedido por su identificador y muestra sus productos, datos del cliente y acciones permitidas.
@@ -17,6 +18,7 @@ import { useOrders } from "@/lib/orders/ordersContext"
  * @returns Detalle del pedido, confirmación de una compra aprobada o aviso de pedido no disponible.
  */
 export default function OrderDetailPage() {
+  const { user } = useAuth()
   const { orderId } = useParams<{ orderId: string }>()
   const { get_order, storage_error, unsaved_order_ids } = useOrders()
   const order = orderId ? get_order(orderId) : undefined
@@ -43,7 +45,7 @@ export default function OrderDetailPage() {
                 <OrderStatusBadge order={order} has_unsaved_result={has_unsaved_result} />
               </div>
               <p className="mt-2 text-sm text-muted-foreground"><time dateTime={order.created_at}>{format_order_date(order.created_at)}</time></p>
-              {(availability.can_pay || availability.can_cancel || availability.is_processing || has_unsaved_result) && (
+              {user?.role !== "ADMIN" && (availability.can_pay || availability.can_cancel || availability.is_processing || has_unsaved_result) && (
                 <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
                   {availability.can_pay && (
                     <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ className: "cursor-pointer" })}>

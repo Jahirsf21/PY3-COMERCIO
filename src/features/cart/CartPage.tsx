@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { ShopHeader } from "@/components/shop-header"
 import { useCart } from "@/lib/cart/cartContext"
+import { useAuth } from "@/lib/auth/authContext"
 import { get_cart_pagination } from "@/lib/cart/cart"
 import { format_price } from "@/lib/shared/utils"
 import { CartItemCard } from "@/features/cart/components/CartItemCard"
@@ -14,6 +15,7 @@ import { HistoryRecommendations } from "@/features/catalog/components/results/Hi
 
 
 export default function CartPage() {
+  const { user } = useAuth()
   const { cart, subtotal, shipping, tax, total, total_items: totalUnits, can_checkout } = useCart()
   const [requested_page, set_requested_page] = useState(1)
   const products_container = useRef<HTMLDivElement>(null)
@@ -146,7 +148,7 @@ export default function CartPage() {
                   <dd className="break-words text-lg font-semibold">{can_checkout ? format_price(total, cart[0].currency) : "—"}</dd>
                 </div>
               </dl>
-              <Button
+              {user?.role !== "ADMIN" && <Button
                 nativeButton={false}
                 render={<Link to="/checkout" />}
                 disabled={!can_checkout}
@@ -155,7 +157,7 @@ export default function CartPage() {
                 className="mt-5 h-11 w-full cursor-pointer"
               >
                 Continuar con la compra
-              </Button>
+              </Button>}
             </aside>
           </div>
         )}
