@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/toast"
 import { get_cart_add_quantity_limits, get_cart_add_quantity_message, get_cart_item_id, get_cart_quantity_input_message, get_cart_quantity_limits, get_product_unit_price, is_valid_cart_quantity } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
+import { useAuth } from "@/lib/auth/authContext"
 import type { ProductHit } from "@/lib/catalog/types"
 import { format_price } from "@/lib/shared/utils"
 
@@ -35,6 +36,7 @@ export function AddToCartForm({
   isSubmitting,
   onSubmittingChange,
 }: AddToCartFormProps) {
+  const { user } = useAuth()
   const id = useId()
   const { cart, add_to_cart } = useCart()
   const [quantityInput, setQuantityInput] = useState<{ cartQuantity: number; value: string } | null>(null)
@@ -81,7 +83,7 @@ export function AddToCartForm({
    */
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
-    if (!selectedSize || !canAdd) return
+    if (user?.role === "ADMIN" || !selectedSize || !canAdd) return
     onSubmittingChange(true)
     setError(null)
 
@@ -103,6 +105,8 @@ export function AddToCartForm({
       onSubmittingChange(false)
     }
   }
+
+  if (user?.role === "ADMIN") return null
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 border-t border-input pt-5" aria-busy={isSubmitting}>

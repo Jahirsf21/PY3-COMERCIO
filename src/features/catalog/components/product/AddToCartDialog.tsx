@@ -8,12 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/toast"
 import { get_cart_add_quantity_limits, get_cart_add_quantity_message, get_cart_item_id, get_cart_quantity_limits, get_product_unit_price, is_valid_cart_quantity } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
+import { useAuth } from "@/lib/auth/authContext"
 import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
 import type { ProductHit, VariantsResult } from "@/lib/catalog/types"
 import { cn, format_price } from "@/lib/shared/utils"
 import { useStores } from "@/lib/stores/storesContext"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
+  const { user } = useAuth()
   const id = useId()
   const { cart, add_to_cart } = useCart()
   const { selected_store } = useStores()
@@ -74,7 +76,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedVariant || !selectedSize || !canAdd) return
+    if (user?.role === "ADMIN" || !selectedVariant || !selectedSize || !canAdd) return
     setIsSubmitting(true)
     setError(null)
 
@@ -96,6 +98,8 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
       setIsSubmitting(false)
     }
   }
+
+  if (user?.role === "ADMIN") return null
 
   return (
     <div className="w-full">
