@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import type { OrderDetails, OrdersContextValue, PayOrderResult, PreparedOrder } from "@/lib/orders/types"
 import type { CardPaymentData, PaymentResult } from "@/lib/payments/types"
@@ -6,6 +6,9 @@ import { add_order, cancel_order, complete_order_payment, create_order, create_o
 import { process_payment, validate_card_payment_data } from "@/lib/payments/payments"
 import OrdersContext from "@/lib/orders/ordersContext"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
+import { useAuth } from "@/lib/auth/authContext"
+import type { User } from "@/lib/auth/types"
+import { record_analytics_event } from "@/lib/analytics/analytics"
 
 /**
  * Gestiona los pedidos de esta pestaña y conserva en memoria los resultados de pago que no se puedan guardar.
@@ -20,6 +23,21 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [storage_error, set_storage_error] = useState(false)
   const [unsaved_order_ids, set_unsaved_order_ids] = useState<string[]>([])
   const { track_event } = useAnalytics()
+  const { user } = useAuth()
+  const current_user = useRef(user)
+  useLayoutEffect(() => { current_user.current = user }, [user])
+  const visible_orders = orders.filter((order) => user && (user.role === "ADMIN" || order.user_id === user.id))
+
+  /**
+   * Recupera únicamente pedidos accesibles para la sesión activa.
+   * @param order_id Identificador del pedido.
+   * @param active_user Sesión que se debe comprobar; por defecto, la del render actual.
+   * @returns Pedido propio, cualquier pedido para ADMIN o undefined si no hay acceso.
+   */
+  function get_accessible_order(order_id: string, active_user: User | null = user): OrderDetails | undefined {
+    if (!active_user) return undefined
+    return current_orders.current.find((order) => order.id === order_id && (active_user.role === "ADMIN" || order.user_id === active_user.id))
+  }
 
   /**
    * Guarda la lista de pedidos y actualiza su estado en memoria.
@@ -44,7 +62,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
    * @returns Pedido guardado, o null si no se pudo crear o persistir.
    */
   function generate_order(prepared_order: PreparedOrder): OrderDetails | null {
-    const order = create_order(prepared_order, get_next_order_number(current_orders.current))
+    const active_user = current_user.current
+    if (!active_user || active_user.role === "ADMIN") return null
+    const order = create_order(prepared_order, get_next_order_number(current_orders.current), active_user.id)
     if (!order || !commit_orders(add_order(current_orders.current, order))) return null
     return order
   }
@@ -55,6 +75,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
    * @returns true si la cancelación se guardó; false si no se permite o falla la escritura.
    */
   function cancel_pending_order(order_id: string): boolean {
+    if (!current_user.current || current_user.current.role === "ADMIN" || !get_accessible_order(order_id, current_user.current)) return false
     if (unsaved_order_ids.includes(order_id)) return false
     const next_orders = cancel_order(current_orders.current, order_id)
     return next_orders !== current_orders.current && commit_orders(next_orders)
@@ -69,10 +90,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
    * @returns Promesa con el resultado procesado, pendiente de guardar o rechazado antes de completar la operación.
    */
   async function pay_order(order_id: string, card_data: CardPaymentData): Promise<PayOrderResult> {
+    const order = get_accessible_order(order_id, current_user.current)
+    if (!current_user.current || current_user.current.role === "ADMIN" || !order) return { status: "rejected", message: "No encontramos la orden." }
+    const owner_id = current_user.current.id
     if (unsaved_order_ids.includes(order_id)) return { status: "rejected", message: "Guarda el resultado pendiente antes de continuar." }
     if (Object.keys(validate_card_payment_data(card_data)).length > 0) return { status: "rejected", message: "Revisa los datos de la tarjeta." }
-    const order = current_orders.current.find((order) => order.id === order_id)
-    if (!order) return { status: "rejected", message: "No encontramos la orden." }
     const payment_block = get_order_payment_block(order)
     if (payment_block) return { status: "rejected", message: payment_block }
 
@@ -90,13 +112,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     if (next_orders === current_orders.current) return { status: "rejected", message: "Este intento de pago ya no está vigente." }
     const is_saved = commit_orders(next_orders, order_id)
     if (result.status === "APPROVE") {
-      track_event("purchase", {
+      const payload = {
         order_id: order.id,
         order_number: order.order_number,
         items_count: order.items.length,
         total: order.total,
         currency: order.currency,
-      })
+      }
+      if (current_user.current?.id === owner_id) track_event("purchase", payload)
+      else record_analytics_event(owner_id, "purchase", payload)
     }
     return {
       status: is_saved ? "processed" : "unsaved",
@@ -106,15 +130,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   const value: OrdersContextValue = {
-    orders,
+    orders: visible_orders,
     storage_error,
-    unsaved_order_ids,
+    unsaved_order_ids: unsaved_order_ids.filter((id) => visible_orders.some((order) => order.id === id)),
     /**
      * Busca un pedido en el estado vigente de esta pestaña.
      * @param order_id Identificador del pedido.
      * @returns Pedido encontrado, o undefined si no existe.
      */
-    get_order: (order_id) => current_orders.current.find((order) => order.id === order_id),
+    get_order: get_accessible_order,
     create_order: generate_order,
     cancel_order: cancel_pending_order,
     pay_order,
