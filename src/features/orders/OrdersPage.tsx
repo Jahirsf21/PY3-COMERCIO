@@ -9,7 +9,7 @@ import { useOrders } from "@/lib/orders/ordersContext"
 import { cn, format_price } from "@/lib/shared/utils"
 
 /**
- * Lista todos los pedidos del navegador, ordenados del consecutivo más reciente al más antiguo.
+ * Lista los pedidos accesibles para la sesión, ordenados del consecutivo más reciente al más antiguo.
  * Permite consultar sus detalles aunque el carrito esté vacío.
  * @returns Listado de pedidos o estado vacío si todavía no se han generado compras.
  */

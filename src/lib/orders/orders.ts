@@ -195,6 +195,7 @@ function parse_order_payment(raw_payment: unknown, order: Pick<OrderDetails, "id
  * Valida los datos de los pedidos y conserva los que tienen una estructura válida.
  * Por cada pedido:
  * - Valida el identificador, el número, la fecha, la moneda, los montos y el estado.
+ * - Conserva el propietario y representa como null los pedidos antiguos sin usuario, sin asignarlos a la sesión activa.
  * - Valida la persona compradora, la entrega y los productos mediante parse_order_buyer(), parse_order_delivery() y parse_order_item().
  * - Valida la aceptación de los términos mediante parse_order_terms_acceptance().
  * - Valida que payment sea null o un pago válido según parse_order_payment(), y que su estado sea compatible con el pedido.
@@ -209,6 +210,7 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
 
   for (const raw_order of orders_data) {
     if (!is_record(raw_order) || !is_nonempty_string(raw_order.id) || !is_positive_integer(raw_order.order_number) ||
+      (raw_order.user_id !== undefined && raw_order.user_id !== null && !is_nonempty_string(raw_order.user_id)) ||
       !is_valid_date(raw_order.created_at) || !is_valid_currency(raw_order.currency) ||
       !is_valid_price(raw_order.subtotal) || !is_valid_price(raw_order.tax) || !is_valid_price(raw_order.shipping) || !is_valid_price(raw_order.total) ||
       (raw_order.status !== "PENDING" && raw_order.status !== "CONFIRMED" && raw_order.status !== "CANCELLED") ||
@@ -236,6 +238,7 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
 
     orders_by_id.set(order_id, {
       id: order_id,
+      user_id: typeof raw_order.user_id === "string" ? raw_order.user_id.trim() : null,
       order_number: raw_order.order_number,
       created_at: raw_order.created_at,
       buyer,
@@ -309,16 +312,18 @@ export function create_order_item(item: PreparedOrderItem, order_id: string): Or
  * Copia la aceptación de los términos y nunca crea un pedido sin una aceptación válida.
  * @param prepared_order Datos preparados.
  * @param order_number Número del pedido.
+ * @param user_id Identificador del cliente que crea el pedido.
  * @returns Pedido creado sin pago, o null si no tiene productos, un consecutivo válido o la aceptación de los términos.
  */
-export function create_order(prepared_order: PreparedOrder, order_number: number): OrderDetails | null {
-  if (prepared_order.items.length === 0 || !is_positive_integer(order_number)) return null
+export function create_order(prepared_order: PreparedOrder, order_number: number, user_id: string): OrderDetails | null {
+  if (prepared_order.items.length === 0 || !is_positive_integer(order_number) || !is_nonempty_string(user_id)) return null
   const terms_acceptance = parse_order_terms_acceptance(prepared_order.termsAcceptance)
   if (!terms_acceptance) return null
   const order_id = crypto.randomUUID()
   return {
     id: order_id,
     order_number,
+    user_id: user_id.trim(),
     created_at: new Date().toISOString(),
     buyer: { ...prepared_order.buyer },
     store: { ...prepared_order.store },

@@ -32,16 +32,26 @@ function App() {
       <Routes>
         <Route path="/" element={<Catalog />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/admin"
+          element={
+            !user
+              ? <Navigate to="/login" replace state={{ from: location }} />
+              : user.role !== "ADMIN"
+                ? <Navigate to="/" replace />
+                : <></>
+          }
+        />
         <Route path="/carrito" element={purchase_redirect ?? <CartPage />} />
         <Route
           path="/checkout"
           element={purchase_redirect ?? (cart.length === 0 ? <Navigate to="/carrito" replace /> : <Checkout />)}
         />
         <Route path="/pedido/:orderId/pago" element={purchase_redirect ?? <PaymentPage />} />
-        <Route path="/pedidos" element={<OrdersPage />} />
+        <Route path="/pedidos" element={!user ? <Navigate to="/login" replace state={{ from: location }} /> : <OrdersPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/politicas-y-ayuda" element={<PoliciesPage />} />
-        <Route path="/pedido/:orderId" element={<OrderDetailPage />} />
+        <Route path="/pedido/:orderId" element={!user ? <Navigate to="/login" replace state={{ from: location }} /> : <OrderDetailPage />} />
         <Route path="/producto/:productId" element={<ProductDetailPage />} />
       </Routes>
       {pathname !== "/login" && <ShopFooter />}
