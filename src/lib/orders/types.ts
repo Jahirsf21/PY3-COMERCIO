@@ -39,7 +39,7 @@ export type OrderPagination = {
  * Datos del pedido, comprador, entrega y montos de la compra.
  * tax es el monto del IVA y shipping el costo de envío.
  * termsAcceptance registra la aceptación de los Términos y Condiciones; todo pedido debe tenerla.
- * user_id identifica al propietario; null conserva pedidos antiguos que no pueden atribuirse a un cliente.
+ * user_id identifica al usuario o a la sesión anónima propietaria; null conserva pedidos antiguos sin dueño conocido.
  */
 export type Order = {
   id: string
