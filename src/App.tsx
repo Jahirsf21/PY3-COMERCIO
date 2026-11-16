@@ -21,11 +21,9 @@ function App() {
   const { user } = useAuth()
   const location = useLocation()
   const { pathname } = location
-  const purchase_redirect = !user
-    ? <Navigate to="/login" replace state={{ from: location }} />
-    : user.role === "ADMIN"
-      ? <Navigate to="/" replace />
-      : null
+  const purchase_redirect = user?.role === "ADMIN"
+    ? <Navigate to="/" replace />
+    : null
 
   return (
     <>
@@ -35,11 +33,9 @@ function App() {
         <Route
           path="/admin"
           element={
-            !user
-              ? <Navigate to="/login" replace state={{ from: location }} />
-              : user.role !== "ADMIN"
-                ? <Navigate to="/" replace />
-                : <></>
+            user?.role !== "ADMIN"
+              ? <Navigate to="/" replace />
+              : <></>
           }
         />
         <Route path="/carrito" element={purchase_redirect ?? <CartPage />} />
@@ -51,7 +47,7 @@ function App() {
         <Route path="/pedidos" element={!user ? <Navigate to="/login" replace state={{ from: location }} /> : <OrdersPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/politicas-y-ayuda" element={<PoliciesPage />} />
-        <Route path="/pedido/:orderId" element={!user ? <Navigate to="/login" replace state={{ from: location }} /> : <OrderDetailPage />} />
+        <Route path="/pedido/:orderId" element={<OrderDetailPage />} />
         <Route path="/producto/:productId" element={<ProductDetailPage />} />
       </Routes>
       {pathname !== "/login" && <ShopFooter />}

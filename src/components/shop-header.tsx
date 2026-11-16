@@ -10,7 +10,7 @@ import { cn } from "@/lib/shared/utils"
 /**
  * Encabezado de la tienda con el logo, el selector de tienda, el carrito y el usuario activo.
  * El usuario activo aparece como un botón con sus iniciales junto al carrito; al presionarlo muestra su información
- * y el acceso a las métricas de uso.
+ * y los accesos a los pedidos y las métricas de uso.
  * Sin sesión muestra el botón "Cuenta", que lleva al inicio de sesión, salvo en la propia pantalla de inicio de sesión.
  * @param props Propiedades del encabezado.
  * @param props.sticky Indica si el encabezado queda fijo al desplazarse.

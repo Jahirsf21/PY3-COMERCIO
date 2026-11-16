@@ -312,7 +312,7 @@ export function create_order_item(item: PreparedOrderItem, order_id: string): Or
  * Copia la aceptación de los términos y nunca crea un pedido sin una aceptación válida.
  * @param prepared_order Datos preparados.
  * @param order_number Número del pedido.
- * @param user_id Identificador del cliente que crea el pedido.
+ * @param user_id Identificador del usuario o de la sesión anónima que crea el pedido.
  * @returns Pedido creado sin pago, o null si no tiene productos, un consecutivo válido o la aceptación de los términos.
  */
 export function create_order(prepared_order: PreparedOrder, order_number: number, user_id: string): OrderDetails | null {

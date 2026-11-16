@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { ChartColumnIcon, LogOutIcon, XIcon } from "lucide-react"
+import { ChartColumnIcon, ClipboardListIcon, LogOutIcon, XIcon } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,8 @@ function get_initials(full_name: string): string {
 /**
  * Botón circular con las iniciales del usuario activo.
  * Al presionarlo despliega un panel lateral con el nombre completo y el tipo de usuario (B2C, B2B o ADMIN)
- * y el tipo de cliente; para un usuario B2B agrega la empresa. Incluye el acceso a la actividad ("Tu actividad", o "Métricas de uso" para el ADMIN) y el botón para cerrar sesión.
+ * y el tipo de cliente; para un usuario B2B agrega la empresa. Incluye los accesos a los pedidos
+ * ("Mis pedidos", o "Todos los pedidos" para el ADMIN), a la actividad y el botón para cerrar sesión.
  * @param props Propiedades del componente.
  * @param props.user Usuario con sesión iniciada.
  * @param props.className Clases adicionales para el botón.
@@ -101,7 +102,15 @@ export function ActiveUserInfo({ user, className }: ActiveUserInfoProps) {
               </div>
             </div>
           </div>
-          <nav aria-label="Opciones de la cuenta" className="border-t border-input p-4">
+          <nav aria-label="Opciones de la cuenta" className="space-y-1 border-t border-input p-4">
+            <SheetClose
+              nativeButton={false}
+              render={<Link to="/pedidos" aria-current={location.pathname === "/pedidos" ? "page" : undefined} />}
+              className="flex h-10 w-full cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-muted"
+            >
+              <ClipboardListIcon aria-hidden="true" className="size-4" />
+              {user.role === "ADMIN" ? "Todos los pedidos" : "Mis pedidos"}
+            </SheetClose>
             <SheetClose
               nativeButton={false}
               render={<Link to="/analytics" aria-current={location.pathname === "/analytics" ? "page" : undefined} />}

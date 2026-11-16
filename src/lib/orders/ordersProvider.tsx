@@ -7,11 +7,11 @@ import { process_payment, validate_card_payment_data } from "@/lib/payments/paym
 import OrdersContext from "@/lib/orders/ordersContext"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { useAuth } from "@/lib/auth/authContext"
-import type { User } from "@/lib/auth/types"
 import { record_analytics_event } from "@/lib/analytics/analytics"
 
 /**
- * Gestiona los pedidos de esta pestaña y conserva en memoria los resultados de pago que no se puedan guardar.
+ * Gestiona los pedidos del usuario o la sesión anónima y permite al ADMIN consultarlos todos.
+ * Conserva en memoria los resultados de pago que no se puedan guardar.
  * Recupera como ERROR las simulaciones interrumpidas, sin repetirlas.
  * @param props Propiedades del proveedor.
  * @param props.children Componentes que consumen los pedidos.
@@ -22,21 +22,21 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const current_orders = useRef(orders)
   const [storage_error, set_storage_error] = useState(false)
   const [unsaved_order_ids, set_unsaved_order_ids] = useState<string[]>([])
-  const { track_event } = useAnalytics()
+  const { owner_id, track_event } = useAnalytics()
   const { user } = useAuth()
-  const current_user = useRef(user)
-  useLayoutEffect(() => { current_user.current = user }, [user])
-  const visible_orders = orders.filter((order) => user && (user.role === "ADMIN" || order.user_id === user.id))
+  const is_admin = user?.role === "ADMIN"
+  const current_session = useRef({ owner_id, is_admin })
+  useLayoutEffect(() => { current_session.current = { owner_id, is_admin } }, [owner_id, is_admin])
+  const visible_orders = orders.filter((order) => is_admin || order.user_id === owner_id)
 
   /**
-   * Recupera únicamente pedidos accesibles para la sesión activa.
+   * Recupera únicamente pedidos del usuario o invitado activo, o cualquier pedido para ADMIN.
    * @param order_id Identificador del pedido.
-   * @param active_user Sesión que se debe comprobar; por defecto, la del render actual.
+   * @param active_session Dueño y permiso de consulta que se deben comprobar; por defecto, los del render actual.
    * @returns Pedido propio, cualquier pedido para ADMIN o undefined si no hay acceso.
    */
-  function get_accessible_order(order_id: string, active_user: User | null = user): OrderDetails | undefined {
-    if (!active_user) return undefined
-    return current_orders.current.find((order) => order.id === order_id && (active_user.role === "ADMIN" || order.user_id === active_user.id))
+  function get_accessible_order(order_id: string, active_session = { owner_id, is_admin }): OrderDetails | undefined {
+    return current_orders.current.find((order) => order.id === order_id && (active_session.is_admin || order.user_id === active_session.owner_id))
   }
 
   /**
@@ -57,14 +57,14 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   /**
-   * Genera identificadores y el siguiente consecutivo para un pedido ya preparado y lo guarda.
+   * Genera y guarda un pedido del usuario o invitado activo; el ADMIN no puede comprar.
    * @param prepared_order Datos verificados del comprador, la tienda, la entrega y los productos.
    * @returns Pedido guardado, o null si no se pudo crear o persistir.
    */
   function generate_order(prepared_order: PreparedOrder): OrderDetails | null {
-    const active_user = current_user.current
-    if (!active_user || active_user.role === "ADMIN") return null
-    const order = create_order(prepared_order, get_next_order_number(current_orders.current), active_user.id)
+    const active_session = current_session.current
+    if (active_session.is_admin) return null
+    const order = create_order(prepared_order, get_next_order_number(current_orders.current), active_session.owner_id)
     if (!order || !commit_orders(add_order(current_orders.current, order))) return null
     return order
   }
@@ -75,7 +75,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
    * @returns true si la cancelación se guardó; false si no se permite o falla la escritura.
    */
   function cancel_pending_order(order_id: string): boolean {
-    if (!current_user.current || current_user.current.role === "ADMIN" || !get_accessible_order(order_id, current_user.current)) return false
+    if (current_session.current.is_admin || !get_accessible_order(order_id, current_session.current)) return false
     if (unsaved_order_ids.includes(order_id)) return false
     const next_orders = cancel_order(current_orders.current, order_id)
     return next_orders !== current_orders.current && commit_orders(next_orders)
@@ -90,9 +90,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
    * @returns Promesa con el resultado procesado, pendiente de guardar o rechazado antes de completar la operación.
    */
   async function pay_order(order_id: string, card_data: CardPaymentData): Promise<PayOrderResult> {
-    const order = get_accessible_order(order_id, current_user.current)
-    if (!current_user.current || current_user.current.role === "ADMIN" || !order) return { status: "rejected", message: "No encontramos la orden." }
-    const owner_id = current_user.current.id
+    const payment_session = current_session.current
+    const order = get_accessible_order(order_id, payment_session)
+    if (payment_session.is_admin || !order) return { status: "rejected", message: "No encontramos la orden." }
     if (unsaved_order_ids.includes(order_id)) return { status: "rejected", message: "Guarda el resultado pendiente antes de continuar." }
     if (Object.keys(validate_card_payment_data(card_data)).length > 0) return { status: "rejected", message: "Revisa los datos de la tarjeta." }
     const payment_block = get_order_payment_block(order)
@@ -119,8 +119,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         total: order.total,
         currency: order.currency,
       }
-      if (current_user.current?.id === owner_id) track_event("purchase", payload)
-      else record_analytics_event(owner_id, "purchase", payload)
+      if (current_session.current.owner_id === payment_session.owner_id) track_event("purchase", payload)
+      else record_analytics_event(payment_session.owner_id, "purchase", payload)
     }
     return {
       status: is_saved ? "processed" : "unsaved",
