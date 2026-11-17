@@ -4,7 +4,7 @@ import { Slider } from "@/components/ui/slider"
 import { format_price } from "@/lib/shared/utils"
 
 export function PriceRangeFilter() {
-  const { start, range, canRefine, refine } = useRange({ attribute: "b2c_price" });
+  const { start, range, canRefine, refine } = useRange({ attribute: "price" });
   const min = range.min ?? 0;
   const max = range.max ?? 0;
   const from = Math.max(min, Number.isFinite(start[0] as number) ? (start[0] as number) : min);

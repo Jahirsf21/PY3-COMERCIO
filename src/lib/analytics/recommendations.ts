@@ -1,6 +1,7 @@
-import { algolia_indices, search_client } from "@/lib/algolia/algolia"
+import { get_product_indices, search_client } from "@/lib/algolia/algolia"
 import type { RecentSearch, ViewedProduct } from "@/lib/analytics/types"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
+import type { SalesChannel } from "@/lib/channel/types"
 import { get_suggestions } from "@/lib/shared/suggestions"
 import { get_suggestion_categories, is_product_suggestion_available } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
@@ -32,13 +33,14 @@ export function get_history_categories(viewed_products: ViewedProduct[]): string
 /**
  * Busca productos disponibles con el texto de una búsqueda reciente, sin usar la caché del cliente.
  * @param query Texto de la búsqueda.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @param selected_store Tienda en la que deben estar disponibles; null usa el mayor stock de una sede.
  * @returns Productos disponibles que coinciden con la búsqueda.
  * @throws Si falla la consulta o la respuesta no contiene un arreglo de hits.
  */
-async function search_available_products(query: string, selected_store: Store | null): Promise<ProductHit[]> {
+async function search_available_products(query: string, channel: SalesChannel, selected_store: Store | null): Promise<ProductHit[]> {
   const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
-    requests: [{ indexName: algolia_indices.main, query, hitsPerPage: max_recommendations }],
+    requests: [{ indexName: get_product_indices(channel).main, query, hitsPerPage: max_recommendations }],
   })
   const search_result = results[0]
   if (!search_result || !("hits" in search_result) || !Array.isArray(search_result.hits)) throw new Error("Respuesta de búsqueda inválida.")
@@ -52,6 +54,7 @@ async function search_available_products(query: string, selected_store: Store | 
  * Nunca recomienda productos ya vistos, productos excluidos ni dos variantes del mismo producto.
  * @param viewed_products Productos vistos del más reciente al más antiguo.
  * @param recent_searches Búsquedas de la más reciente a la más antigua.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @param excluded_product_ids Productos que no se deben recomendar, por ejemplo los del carrito.
  * @param selected_store Tienda en la que deben estar disponibles; null usa el mayor stock de una sede.
  * @returns Recomendaciones disponibles; vacío si no hay historial.
@@ -60,17 +63,18 @@ async function search_available_products(query: string, selected_store: Store | 
 export async function get_history_recommendations(
   viewed_products: ViewedProduct[],
   recent_searches: RecentSearch[],
+  channel: SalesChannel,
   excluded_product_ids: string[] = [],
   selected_store: Store | null = null,
 ): Promise<ProductHit[]> {
   const excluded_ids = new Set([...viewed_products.map((product) => product.product_id), ...excluded_product_ids])
   const categories = get_history_categories(viewed_products)
-  const recommendations = categories.length > 0 ? await get_suggestions(categories, [...excluded_ids], selected_store) : []
+  const recommendations = categories.length > 0 ? await get_suggestions(categories, [...excluded_ids], channel, selected_store) : []
   const recommended_ids = new Set(recommendations.map((product) => product.product_id))
 
   for (const recent_search of recent_searches.slice(0, max_search_sources)) {
     if (recommendations.length >= max_recommendations) break
-    for (const product of await search_available_products(recent_search.query, selected_store)) {
+    for (const product of await search_available_products(recent_search.query, channel, selected_store)) {
       if (excluded_ids.has(product.product_id) || recommended_ids.has(product.product_id)) continue
       recommended_ids.add(product.product_id)
       recommendations.push(product)

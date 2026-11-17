@@ -38,9 +38,9 @@ export function ProductCard({ hit }: { hit: ProductHit }) {
         <p className="text-sm font-semibold">
           {format_price(get_product_unit_price(hit), hit.currency)}
         </p>
-        {hit.on_discount && hit.b2c_discount && (
+        {hit.on_discount && hit.discount && (
           <p className="text-xs text-muted-foreground">
-            <span className="line-through">{format_price(hit.b2c_price, hit.currency)}</span> · {hit.b2c_discount.percentage}% de descuento
+            <span className="line-through">{format_price(hit.price, hit.currency)}</span> · {hit.discount.percentage}% de descuento
           </p>
         )}
       </CardContent>

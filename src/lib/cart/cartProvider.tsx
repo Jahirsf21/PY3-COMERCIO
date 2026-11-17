@@ -6,12 +6,13 @@ import { get_catalog_quantity_limits, get_cart_validation } from "@/lib/catalog/
 import CartContext from "@/lib/cart/cartContext"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { useAuth } from "@/lib/auth/authContext"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { reconcile_store_cart } from "@/lib/stores/stores"
 import { is_positive_integer } from "@/lib/shared/utils"
 
 /**
- * Comparte el carrito, valida sus líneas con el catálogo y guarda cada modificación.
+ * Comparte el carrito, valida sus líneas con el catálogo del canal activo y guarda cada modificación.
  * Ajusta cantidades al stock de la tienda y conserva los productos si falla la consulta.
  * El carrito pertenece al usuario con sesión iniciada: al cerrar sesión o iniciar otra, se carga el carrito
  * del usuario activo (vacío sin sesión) y se descartan las operaciones pendientes del anterior.
@@ -22,6 +23,7 @@ import { is_positive_integer } from "@/lib/shared/utils"
 export function CartProvider({ children }: { children: ReactNode }) {
   const { selected_store, get_selected_store, report_cart_changes } = useStores()
   const { user } = useAuth()
+  const { channel, get_channel } = useChannel()
   const { track_event } = useAnalytics()
   const user_id = user?.id ?? null
   const [cart_state, set_cart_state] = useState(() => ({ user_id, items: get_stored_cart(user_id) }))
@@ -79,9 +81,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (cart.length === 0) return
     let active = true
-    get_cart_validation(cart, selected_store)
+    get_cart_validation(cart, channel, selected_store)
       .then((results) => {
-        if (!active || get_selected_store() !== selected_store) return
+        if (!active || get_selected_store() !== selected_store || get_channel() !== channel) return
         const applicable = results.filter(({ original_item }) => current_cart.current.includes(original_item))
         const reconciliation = reconcile_store_cart(applicable)
         set_validations(reconciliation.validations)
@@ -94,17 +96,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        if (active && get_selected_store() === selected_store) {
+        if (active && get_selected_store() === selected_store && get_channel() === channel) {
           set_validations(cart.map(get_cart_validation_error))
           set_validated_store_id(selected_store?.id ?? null)
         }
       })
     return () => { active = false }
-  }, [cart, validation_retry, selected_store, get_selected_store, report_cart_changes, apply_action])
+  }, [cart, validation_retry, selected_store, channel, get_selected_store, get_channel, report_cart_changes, apply_action])
 
   /**
-   * Agrega unidades respetando las reglas B2C y el stock actual de la tienda.
-   * Descarta la operación si el carrito o la tienda cambian durante la consulta.
+   * Agrega unidades respetando las reglas del canal activo y el stock actual de la tienda.
+   * Descarta la operación si el carrito, la tienda o el canal cambian durante la consulta.
    * Registra el evento de agregar al carrito con las unidades agregadas.
    * @param product Producto que se desea agregar.
    * @param selected_size Talla seleccionada.
@@ -116,11 +118,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (quantity !== undefined && !is_positive_integer(quantity)) return false
     const original_cart = current_cart.current
     const store = get_selected_store()
+    const active_channel = get_channel()
     const item_id = get_cart_item_id(product.sku, selected_size)
     set_pending_operations((count) => count + 1)
     try {
-      const limits = await get_catalog_quantity_limits(product.product_id, product.sku, selected_size, store)
-      if (current_cart.current !== original_cart || get_selected_store() !== store) return false
+      const limits = await get_catalog_quantity_limits(product.product_id, product.sku, selected_size, active_channel, store)
+      if (current_cart.current !== original_cart || get_selected_store() !== store || get_channel() !== active_channel) return false
       const cart_quantity = original_cart.find((item) => item.id === item_id)?.quantity ?? 0
       const additional_limits = get_cart_add_quantity_limits(limits, cart_quantity)
       const additional_quantity = quantity ?? additional_limits?.min_quantity ?? 0
@@ -159,10 +162,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const item = current_cart.current.find((item) => item.id === item_id)
     if (!item) return false
     const store = get_selected_store()
+    const active_channel = get_channel()
     set_pending_operations((count) => count + 1)
     try {
-      const limits = await get_catalog_quantity_limits(item.product_id, item.sku, item.selected_size, store)
-      if (current_cart.current.find((current_item) => current_item.id === item_id) !== item || get_selected_store() !== store) return false
+      const limits = await get_catalog_quantity_limits(item.product_id, item.sku, item.selected_size, active_channel, store)
+      if (current_cart.current.find((current_item) => current_item.id === item_id) !== item || get_selected_store() !== store || get_channel() !== active_channel) return false
       const changed = limits ? apply_action({ type: "set_quantity", item_id, quantity: get_quantity(item, limits), limits }) : false
       if (!changed) revalidate_cart()
       return changed

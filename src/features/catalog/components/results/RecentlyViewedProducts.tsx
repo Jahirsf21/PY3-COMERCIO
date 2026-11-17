@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { get_products_by_variants } from "@/lib/catalog/catalog"
 import type { ProductSuggestionsResult } from "@/lib/catalog/types"
+import { useChannel } from "@/lib/channel/channelContext"
 
 /**
  * Sección "Vistos recientemente" del inicio del catálogo, con los últimos productos que vio el usuario o la sesión anónima.
@@ -13,10 +14,11 @@ import type { ProductSuggestionsResult } from "@/lib/catalog/types"
  */
 export function RecentlyViewedProducts() {
   const { viewed_products } = useAnalytics()
+  const { channel } = useChannel()
   const [retry_count, set_retry_count] = useState(0)
   const [result, set_result] = useState<ProductSuggestionsResult | null>(null)
   const variants_key = JSON.stringify(viewed_products.map(({ product_id, sku }) => ({ product_id, sku })))
-  const request_key = `${variants_key}:${retry_count}`
+  const request_key = `${variants_key}:${channel}:${retry_count}`
   const has_history = viewed_products.length > 0
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function RecentlyViewedProducts() {
     if (variants.length === 0) return
     let is_effect_active = true
 
-    get_products_by_variants(variants)
+    get_products_by_variants(variants, channel)
       .then((products) => {
         if (is_effect_active) set_result({ request_key, products, has_error: false })
       })
@@ -33,7 +35,7 @@ export function RecentlyViewedProducts() {
       })
 
     return () => { is_effect_active = false }
-  }, [variants_key, request_key])
+  }, [variants_key, request_key, channel])
 
   if (!has_history) return null
 

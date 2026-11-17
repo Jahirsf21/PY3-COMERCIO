@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { get_history_recommendations } from "@/lib/analytics/recommendations"
 import type { ProductSuggestionsResult } from "@/lib/catalog/types"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 
 type HistoryRecommendationsProps = {
@@ -24,6 +25,7 @@ export function HistoryRecommendations({ excluded_product_ids = [], className }:
   const title_id = useId()
   const { viewed_products, recent_searches } = useAnalytics()
   const { selected_store } = useStores()
+  const { channel } = useChannel()
   const [retry_count, set_retry_count] = useState(0)
   const [result, set_result] = useState<ProductSuggestionsResult | null>(null)
   const history_key = JSON.stringify({
@@ -31,7 +33,7 @@ export function HistoryRecommendations({ excluded_product_ids = [], className }:
     recent_searches,
     excluded_product_ids: [...new Set(excluded_product_ids)].sort(),
   })
-  const request_key = `${history_key}:${selected_store?.id ?? "none"}:${retry_count}`
+  const request_key = `${history_key}:${channel}:${selected_store?.id ?? "none"}:${retry_count}`
   const has_history = viewed_products.length > 0 || recent_searches.length > 0
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function HistoryRecommendations({ excluded_product_ids = [], className }:
     if (history.viewed_products.length === 0 && history.recent_searches.length === 0) return
     let is_effect_active = true
 
-    get_history_recommendations(history.viewed_products, history.recent_searches, history.excluded_product_ids, selected_store)
+    get_history_recommendations(history.viewed_products, history.recent_searches, channel, history.excluded_product_ids, selected_store)
       .then((products) => {
         if (is_effect_active) set_result({ request_key, products, has_error: false })
       })
@@ -52,7 +54,7 @@ export function HistoryRecommendations({ excluded_product_ids = [], className }:
       })
 
     return () => { is_effect_active = false }
-  }, [history_key, request_key, selected_store])
+  }, [history_key, request_key, channel, selected_store])
 
   if (!has_history) return null
 

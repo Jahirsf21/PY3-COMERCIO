@@ -1,5 +1,6 @@
-import { algolia_indices, search_client } from "@/lib/algolia/algolia"
+import { get_product_indices, search_client } from "@/lib/algolia/algolia"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
+import type { SalesChannel } from "@/lib/channel/types"
 import { get_filter_value, get_suggestion_categories, is_product_suggestion_available } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
 
@@ -11,11 +12,12 @@ import type { Store } from "@/lib/stores/types"
  * Recorre las páginas hasta completar 20 sugerencias o agotar los resultados.
  * @param category_names Categorías de los productos de origen.
  * @param product_ids Identificadores de los productos que se excluyen.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @param selected_store Tienda en la que deben estar disponibles las sugerencias; null usa el mayor stock de una sede.
  * @returns Hasta 20 variantes sugeridas; vacío si no hay categorías válidas o productos disponibles.
  * @throws Si falla una consulta a Algolia o su respuesta no contiene resultados válidos.
  */
-export async function get_suggestions(category_names: string[], product_ids: string[], selected_store: Store | null = null): Promise<ProductHit[]> {
+export async function get_suggestions(category_names: string[], product_ids: string[], channel: SalesChannel, selected_store: Store | null = null): Promise<ProductHit[]> {
   const categories = get_suggestion_categories(category_names)
   if (categories.length === 0) return []
   const category_filters = categories.map((category_name) => `categories:${get_filter_value(category_name)}`)
@@ -34,7 +36,7 @@ export async function get_suggestions(category_names: string[], product_ids: str
   while (current_page < total_pages && suggested_products.length < suggestion_limit) {
     const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
       requests: [{
-        indexName: algolia_indices.main,
+        indexName: get_product_indices(channel).main,
         query: "",
         filters: suggestion_filters,
         hitsPerPage: 20,

@@ -1,9 +1,5 @@
 import type { Hit } from "instantsearch.js"
-
-/**
- * Canales de venta disponibles
- */
-export type SalesChannel = "b2c" | "b2b"
+import type { SalesChannel } from "@/lib/channel/types"
 
 /**
  * Descuento porcentual vigente durante un rango de fechas
@@ -52,6 +48,8 @@ export type ProductFacets = {
 
 /**
  * Esquema del producto recibido por el servicio de catálogo.
+ * Es el mismo en los índices de ambos canales: precio, reglas de cantidad e inventario
+ * corresponden al canal del índice consultado. discount solo existe si el canal ofrece descuento.
  */
 export type ProductRecord = {
   objectID: string
@@ -61,32 +59,30 @@ export type ProductRecord = {
   description: string
   brand: string
   categories: string[]
-  sales_channels: SalesChannel[]
   currency: string
   keywords: string[]
   image: ProductImage
   images: ProductImage[]
   rating: number,
-  b2c_price: number
-  b2c_discount?: Discount
+  price: number
+  discount?: Discount
   on_discount: boolean
-  b2b_price: number
-  in_stock_b2c: boolean
-  in_stock_b2b: boolean
-  b2c_min_order_quantity: number
-  b2c_max_order_quantity: number
-  b2c_step_quantity: number
-  b2c_stock_by_location: StockByLocation[]
-  b2b_min_order_quantity: number
-  b2b_max_order_quantity: number
-  b2b_step_quantity: number
-  b2b_stock_by_location: StockByLocation[]
+  in_stock: boolean
+  min_order_quantity: number
+  max_order_quantity: number
+  step_quantity: number
+  stock_by_location: StockByLocation[]
   provinces: string[]
   facets: ProductFacets
 }
 
+/**
+ * Resultado de consultar las variantes de un producto en un canal de venta.
+ * productId y channel identifican la consulta que generó el resultado.
+ */
 export type VariantsResult = {
   productId: string
+  channel: SalesChannel
   variants: ProductHit[]
   error: boolean
 }

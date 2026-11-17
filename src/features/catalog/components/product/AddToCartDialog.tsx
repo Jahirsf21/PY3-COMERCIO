@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/authContext"
 import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
 import type { ProductHit, VariantsResult } from "@/lib/catalog/types"
 import { cn, format_price } from "@/lib/shared/utils"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
@@ -19,6 +20,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const id = useId()
   const { cart, add_to_cart } = useCart()
   const { selected_store } = useStores()
+  const { channel } = useChannel()
   const [open, setOpen] = useState(false)
   const [result, setResult] = useState<VariantsResult>()
   const [selectedSku, setSelectedSku] = useState(hit.sku)
@@ -30,22 +32,22 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
     if (!open) return
     let active = true
 
-    get_product_variants(hit.product_id)
+    get_product_variants(hit.product_id, channel)
       .then((variants) => {
-        if (active) setResult({ productId: hit.product_id, variants, error: false })
+        if (active) setResult({ productId: hit.product_id, channel, variants, error: false })
       })
       .catch(() => {
-        if (active) setResult({ productId: hit.product_id, variants: [], error: true })
+        if (active) setResult({ productId: hit.product_id, channel, variants: [], error: true })
       })
 
     return () => { active = false }
-  }, [open, hit.product_id])
+  }, [open, hit.product_id, channel])
 
-  const isLoading = result?.productId !== hit.product_id
+  const isLoading = result?.productId !== hit.product_id || result.channel !== channel
   const variants = isLoading ? [] : result.variants
   const selectedVariant = variants.find((variant) => variant.sku === selectedSku) ?? variants[0]
   const preview = selectedVariant ?? hit
-  const locations = selectedVariant?.b2c_stock_by_location ?? []
+  const locations = selectedVariant?.stock_by_location ?? []
   const sizes = get_sizes_from_stock(locations)
   const availableSizes = sizes.filter((size) => {
     const limits = selectedVariant ? get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(locations, size, selected_store)) : null
@@ -227,9 +229,9 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
 
                 <div className="space-y-1">
                   <p className="text-2xl font-semibold">{format_price(get_product_unit_price(preview), preview.currency)}</p>
-                  {preview.on_discount && preview.b2c_discount && (
+                  {preview.on_discount && preview.discount && (
                     <p className="text-sm text-muted-foreground">
-                      <span className="line-through">{format_price(preview.b2c_price, preview.currency)}</span> · {preview.b2c_discount.percentage}% de descuento
+                      <span className="line-through">{format_price(preview.price, preview.currency)}</span> · {preview.discount.percentage}% de descuento
                     </p>
                   )}
                   {!isLoading && selectedVariant && (

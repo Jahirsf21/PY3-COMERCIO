@@ -1,3 +1,4 @@
+import type { SalesChannel } from "@/lib/channel/types"
 import type { ProductImage } from "@/lib/catalog/types"
 import type { CartItem, CartValidationResult } from "@/lib/cart/types"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo, DeliveryMethod, TermsAcceptance } from "@/lib/checkout/types"
@@ -68,8 +69,10 @@ export type OrderDetails = Order & {
   payment: Payment | null
 }
 
+/** Formulario de checkout con el carrito, el canal de venta del comprador y la tienda elegida. */
 export type PrepareOrderInput = CheckoutFormData & {
   cart: CartItem[]
+  channel: SalesChannel
   store: Store | null
 }
 
