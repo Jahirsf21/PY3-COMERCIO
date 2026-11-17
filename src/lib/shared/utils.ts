@@ -183,32 +183,32 @@ export function get_suggestion_categories(category_names: string[]): string[] {
 }
 
 /**
- * Calcula los límites de cantidad de una talla con las reglas B2C del producto y el stock disponible.
- * El máximo es la mayor cantidad válida según el paso que no supera el máximo B2C ni el stock; es cero si el stock no alcanza el mínimo.
- * @param product Reglas de cantidad B2C del producto.
+ * Calcula los límites de cantidad de una talla con las reglas del producto y el stock disponible.
+ * El máximo es la mayor cantidad válida según el paso que no supera el máximo del producto ni el stock; es cero si el stock no alcanza el mínimo.
+ * @param product Reglas de cantidad del producto.
  * @param available_quantity Stock disponible de la talla.
  * @returns Límites de cantidad, o null si las reglas o el stock son inválidos.
  */
-export function get_product_quantity_limits(product: Pick<ProductRecord, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">, available_quantity: number | null): CartQuantityLimits | null {
-  const { b2c_min_order_quantity: min_quantity, b2c_max_order_quantity, b2c_step_quantity: step_quantity } = product
-  if (![min_quantity, b2c_max_order_quantity, step_quantity].every((rule_quantity) => Number.isSafeInteger(rule_quantity) && rule_quantity > 0)) return null
-  if (available_quantity === null || b2c_max_order_quantity < min_quantity || !Number.isSafeInteger(available_quantity) || available_quantity < 0) return null
-  const quantity_cap = Math.min(b2c_max_order_quantity, available_quantity)
+export function get_product_quantity_limits(product: Pick<ProductRecord, "min_order_quantity" | "max_order_quantity" | "step_quantity">, available_quantity: number | null): CartQuantityLimits | null {
+  const { min_order_quantity: min_quantity, max_order_quantity, step_quantity } = product
+  if (![min_quantity, max_order_quantity, step_quantity].every((rule_quantity) => Number.isSafeInteger(rule_quantity) && rule_quantity > 0)) return null
+  if (available_quantity === null || max_order_quantity < min_quantity || !Number.isSafeInteger(available_quantity) || available_quantity < 0) return null
+  const quantity_cap = Math.min(max_order_quantity, available_quantity)
   const max_quantity = quantity_cap < min_quantity ? 0 : min_quantity + Math.floor((quantity_cap - min_quantity) / step_quantity) * step_quantity
   return { min_quantity, max_quantity, step_quantity }
 }
 
 /**
- * Comprueba si un producto se vende en B2C y tiene al menos una talla con stock suficiente para comprarlo.
+ * Comprueba si un producto tiene al menos una talla con stock suficiente para comprarlo.
  * Usa la tienda elegida o el mayor stock de una sola sede para cada talla.
  * @param product Variante candidata a sugerencia.
  * @param selected_store Local elegido; null permite usar el mayor stock de una sede.
- * @returns true si al menos una talla permite una compra; false si no se vende en B2C o el stock es inconsistente.
+ * @returns true si al menos una talla permite una compra; false si el stock es inconsistente.
  */
 export function is_product_suggestion_available(product: ProductRecord, selected_store: Store | null = null): boolean {
-  if (!Array.isArray(product.sales_channels) || !product.sales_channels.includes("b2c") || !Array.isArray(product.b2c_stock_by_location)) return false
-  const available_quantities = get_sizes_from_stock(product.b2c_stock_by_location)
-    .map((size) => get_available_quantity_by_size(product.b2c_stock_by_location, size, selected_store))
+  if (!Array.isArray(product.stock_by_location)) return false
+  const available_quantities = get_sizes_from_stock(product.stock_by_location)
+    .map((size) => get_available_quantity_by_size(product.stock_by_location, size, selected_store))
   if (available_quantities.some((quantity) => quantity === null)) return false
   return available_quantities.some((available_quantity) => {
     const limits = get_product_quantity_limits(product, available_quantity)

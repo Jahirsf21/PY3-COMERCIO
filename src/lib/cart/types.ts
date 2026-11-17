@@ -9,12 +9,12 @@ export type CartProduct = {
   title: string
   image: ProductImage
   currency: string
-  b2c_price: number
-  b2c_discount?: Discount
+  price: number
+  discount?: Discount
   on_discount: boolean
-  b2c_min_order_quantity: number
-  b2c_max_order_quantity: number
-  b2c_step_quantity: number
+  min_order_quantity: number
+  max_order_quantity: number
+  step_quantity: number
 }
 
 /**

@@ -1,9 +1,10 @@
 import type { CartValidationResult } from "@/lib/cart/types"
 import { get_product_variants } from "@/lib/catalog/catalog"
+import type { SalesChannel } from "@/lib/channel/types"
 import { get_available_quantity_by_size } from "@/lib/catalog/stock"
 import type { Store, StoreCartChange, StoreCartProduct, StoreCartReconciliation, StoreGroup } from "@/lib/stores/types"
 
-// Los nombres coinciden con b2c_stock_by_location del catálogo.
+// Los nombres coinciden con stock_by_location del catálogo en ambos canales.
 const stores: Store[] = [
   { id: "san-jose-tienda-escazu", province: "San José", locale_name: "Tienda Escazú" },
   { id: "san-jose-tienda-san-jose", province: "San José", locale_name: "Tienda San José" },
@@ -37,19 +38,20 @@ export function get_store_groups(): StoreGroup[] {
  * No suma inventarios entre sedes ni limita la puntuación a las cantidades solicitadas.
  * Los empates conservan el orden del registro de tiendas.
  * @param products Variantes y tallas presentes en el carrito.
+ * @param channel Canal de venta cuyo inventario se consulta.
  * @returns Promesa con la tienda elegida, o null si el carrito está vacío.
  * @throws Si falla una consulta del catálogo o el inventario consultado es inválido.
  */
-export async function get_best_cart_store(products: StoreCartProduct[]): Promise<Store | null> {
+export async function get_best_cart_store(products: StoreCartProduct[], channel: SalesChannel): Promise<Store | null> {
   if (products.length === 0) return null
   const unique_products = [...new Map(products.map((product) => [JSON.stringify([product.product_id, product.sku, product.selected_size]), product])).values()]
   const product_ids = [...new Set(unique_products.map((product) => product.product_id))]
-  const responses = await Promise.all(product_ids.map((product_id) => get_product_variants(product_id)))
+  const responses = await Promise.all(product_ids.map((product_id) => get_product_variants(product_id, channel)))
   const variants_by_product = new Map(product_ids.map((product_id, index) => [product_id, responses[index]]))
   const variants = unique_products.map((product) => {
     const variant = variants_by_product.get(product.product_id)?.find((candidate) => candidate.product_id === product.product_id && candidate.sku === product.sku)
-    if (!variant || !Array.isArray(variant.sales_channels) || !variant.sales_channels.includes("b2c")) return null
-    if (get_available_quantity_by_size(variant.b2c_stock_by_location, product.selected_size) === null) throw new Error("Inventario inválido para elegir la tienda.")
+    if (!variant) return null
+    if (get_available_quantity_by_size(variant.stock_by_location, product.selected_size) === null) throw new Error("Inventario inválido para elegir la tienda.")
     return { variant, selected_size: product.selected_size }
   })
   let best_store: Store | null = null
@@ -58,7 +60,7 @@ export async function get_best_cart_store(products: StoreCartProduct[]): Promise
     let total_stock = 0
     for (const product of variants) {
       if (!product) continue
-      const stock = get_available_quantity_by_size(product.variant.b2c_stock_by_location, product.selected_size, store)
+      const stock = get_available_quantity_by_size(product.variant.stock_by_location, product.selected_size, store)
       if (stock === null || !Number.isSafeInteger(total_stock + stock)) throw new Error("Inventario inválido para elegir la tienda.")
       total_stock += stock
     }

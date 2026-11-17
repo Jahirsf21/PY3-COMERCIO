@@ -8,11 +8,11 @@ import { get_store } from "@/lib/stores/stores"
 import { get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 
 /**
- * Valida comprador, entrega, stock y precios de una sola sede, sin guardar ni cobrar.
+ * Valida comprador, entrega, stock y precios de una sola sede en el canal del comprador, sin guardar ni cobrar.
  * Exige dirección solo para envío; para retiro prepara dirección nula y costo de envío cero.
  * Rechaza el pedido si no se aceptaron los términos y registra la aceptación con la fecha en que se marcó la casilla.
  * Solicita revisar el carrito si cambian precios o cantidades permitidas.
- * @param input Formulario con el nombre del comprador resuelto, carrito completo y tienda elegida.
+ * @param input Formulario con el nombre del comprador resuelto, carrito completo, canal de venta y tienda elegida.
  * @returns Promesa con los datos preparados, una solicitud de revisión, un rechazo o un error de consulta.
  */
 export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOrderResult> {
@@ -42,7 +42,7 @@ export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOr
     return { status: "rejected", message: "Los productos del pedido deben tener una misma moneda." }
   }
   try {
-    const validations = await get_cart_validation(cart, store)
+    const validations = await get_cart_validation(cart, input.channel, store)
     if (validations.some((validation) => validation.status === "error")) {
       return { status: "error", message: "No pudimos comprobar todos los productos de la tienda. Intenta nuevamente." }
     }

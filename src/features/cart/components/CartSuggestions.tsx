@@ -4,22 +4,24 @@ import { Button } from "@/components/ui/button"
 import { get_cart_suggestions } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import type { CartSuggestionsResult } from "@/lib/cart/types"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 
 export function CartSuggestions() {
   const { cart } = useCart()
   const { selected_store } = useStores()
+  const { channel } = useChannel()
   const [retry_count, set_retry_count] = useState(0)
   const [suggestion_result, set_suggestion_result] = useState<CartSuggestionsResult | null>(null)
   const product_ids_key = JSON.stringify([...new Set(cart.map((item) => item.product_id))].sort())
-  const request_key = `${product_ids_key}:${selected_store?.id ?? "none"}:${retry_count}`
+  const request_key = `${product_ids_key}:${channel}:${selected_store?.id ?? "none"}:${retry_count}`
 
   useEffect(() => {
     const product_ids: string[] = JSON.parse(product_ids_key)
     if (product_ids.length === 0) return
     let is_effect_active = true
 
-    get_cart_suggestions(product_ids, selected_store)
+    get_cart_suggestions(product_ids, channel, selected_store)
       .then((products) => {
         if (is_effect_active) set_suggestion_result({ request_key, products, has_error: false })
       })
@@ -28,7 +30,7 @@ export function CartSuggestions() {
       })
 
     return () => { is_effect_active = false }
-  }, [product_ids_key, request_key, selected_store])
+  }, [product_ids_key, request_key, channel, selected_store])
 
   const is_loading = suggestion_result?.request_key !== request_key
   const has_error = !is_loading && suggestion_result.has_error

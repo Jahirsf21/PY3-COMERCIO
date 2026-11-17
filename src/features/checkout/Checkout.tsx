@@ -14,6 +14,7 @@ import { useOrders } from "@/lib/orders/ordersContext"
 import { prepare_order } from "@/lib/orders/orders"
 import { format_price } from "@/lib/shared/utils"
 import { get_best_cart_store } from "@/lib/stores/stores"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 import type { StoreCartProduct } from "@/lib/stores/types"
 
@@ -26,13 +27,14 @@ export default function Checkout() {
   const tracked_checkout = useRef(false)
   const { create_order } = useOrders()
   const { selected_store, get_selected_store, select_store } = useStores()
+  const { channel, get_channel } = useChannel()
   const [is_generating, set_is_generating] = useState(false)
   const creating_order = useRef(false)
   const navigate = useNavigate()
   const [store_retry, set_store_retry] = useState(0)
   const [store_failure, set_store_failure] = useState<{ key: string; message: string } | null>(null)
   const products_key = JSON.stringify(cart.map(({ product_id, sku, selected_size }) => ({ product_id, sku, selected_size })))
-  const store_request_key = `${products_key}:${store_retry}`
+  const store_request_key = `${products_key}:${channel}:${store_retry}`
   const needs_store = formData.delivery_method === "SHIPPING" && selected_store === null && cart.length > 0
   const store_error = needs_store && store_failure?.key === store_request_key ? store_failure.message : undefined
   const is_assigning_store = needs_store && store_error === undefined
@@ -49,7 +51,7 @@ export default function Checkout() {
     if (!needs_store || store_error !== undefined) return
     let active = true
     const products: StoreCartProduct[] = JSON.parse(products_key)
-    get_best_cart_store(products)
+    get_best_cart_store(products, channel)
       .then((store) => {
         if (!active || get_selected_store() !== null) return
         if (store) select_store(store.id)
@@ -61,10 +63,10 @@ export default function Checkout() {
         }
       })
     return () => { active = false }
-  }, [needs_store, store_error, products_key, store_request_key, get_selected_store, select_store])
+  }, [needs_store, store_error, products_key, store_request_key, channel, get_selected_store, select_store])
 
   /**
-   * Prepara y guarda un pedido únicamente si el carrito y la tienda siguen vigentes.
+   * Prepara y guarda un pedido únicamente si el carrito, la tienda y el canal siguen vigentes.
    * Al guardar, limpia el borrador y el carrito y abre el pago; ante errores conserva los datos.
    * @param form_data Formulario validado con el nombre del comprador resuelto.
    * @returns Promesa que termina al generar el pedido, descartar la solicitud o mostrar el error.
@@ -75,10 +77,11 @@ export default function Checkout() {
     set_is_generating(true)
     const order_cart = get_cart()
     const store = get_selected_store()
+    const order_channel = get_channel()
     try {
-      const prepared = await prepare_order({ ...form_data, cart: order_cart, store })
+      const prepared = await prepare_order({ ...form_data, cart: order_cart, channel: order_channel, store })
       if (!creating_order.current) return
-      if (get_cart() !== order_cart || get_selected_store() !== store) {
+      if (get_cart() !== order_cart || get_selected_store() !== store || get_channel() !== order_channel) {
         toast.add({ title: "Revisa tu pedido", description: "El carrito o la tienda cambiaron. Revisa el resumen antes de generar el pedido.", type: "error" })
         return
       }

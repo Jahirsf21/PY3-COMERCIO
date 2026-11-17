@@ -9,6 +9,7 @@ import { AddToCartForm } from "@/features/product-detail/AddToCartForm"
 import { ProductSuggestions } from "@/features/product-detail/ProductSuggestions"
 import { ShopHeader } from "@/components/shop-header"
 import { format_price } from "@/lib/shared/utils"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
@@ -32,6 +33,7 @@ function ProductDetailSkeleton() {
 
 export default function ProductDetailPage() {
   const { selected_store } = useStores()
+  const { channel } = useChannel()
   const { track_event } = useAnalytics()
   const tracked_view_sku = useRef<string | null>(null)
   const { productId = "" } = useParams();
@@ -53,27 +55,27 @@ export default function ProductDetailPage() {
   useEffect(() => {
     let active = true;
 
-    get_product_variants(productId)
+    get_product_variants(productId, channel)
       .then((variants) => {
-        if (active) setResult({ productId, variants, error: false });
+        if (active) setResult({ productId, channel, variants, error: false });
       })
       .catch(() => {
-        if (active) setResult({ productId, variants: [], error: true });
+        if (active) setResult({ productId, channel, variants: [], error: true });
       });
 
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [productId, channel]);
 
-  const isLoading = result?.productId !== productId;
+  const isLoading = result?.productId !== productId || result.channel !== channel;
   const variants = isLoading ? [] : result.variants;
   const requestedSku = searchParams.get("variante");
   const requestedSize = searchParams.get("talla");
   const selectedVariant =
     variants.find((variant) => variant.sku === requestedSku) ??
     variants[0];
-  const stockByLocation = selectedVariant?.b2c_stock_by_location ?? [];
+  const stockByLocation = selectedVariant?.stock_by_location ?? [];
   const sizes = get_sizes_from_stock(stockByLocation);
   const selectedSize =
     selectedVariant?.sku === requestedSku && requestedSize && sizes.includes(requestedSize)
@@ -122,11 +124,11 @@ export default function ProductDetailPage() {
     : 0;
   const selectedImage = images[selectedImageIndex] ?? images[0];
   const discount = selectedVariant.on_discount
-    ? selectedVariant.b2c_discount
+    ? selectedVariant.discount
     : undefined;
   const currentPrice = discount
-    ? selectedVariant.b2c_price * (1 - discount.percentage / 100)
-    : selectedVariant.b2c_price;
+    ? selectedVariant.price * (1 - discount.percentage / 100)
+    : selectedVariant.price;
   const availableSizes = sizes.filter((size) => {
     const limits = get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(stockByLocation, size, selected_store));
     return limits !== null && limits.max_quantity >= limits.min_quantity;
@@ -198,7 +200,7 @@ export default function ProductDetailPage() {
                   {discount && (
                     <p className="text-sm text-muted-foreground">
                       <span className="line-through">
-                        {format_price(selectedVariant.b2c_price, selectedVariant.currency)}
+                        {format_price(selectedVariant.price, selectedVariant.currency)}
                       </span>{" "}
                       <span className="font-medium text-foreground">
                         {discount.percentage}% de descuento
@@ -330,10 +332,10 @@ export default function ProductDetailPage() {
               )}
               <DetailRow label="Materiales" value={selectedVariant.facets.materials.join(", ")} />
               <DetailRow label="Género" value={selectedVariant.facets.gender.join(", ")} />
-               {selectedVariant.b2c_min_order_quantity > 1 && (
-                 <DetailRow label="Compra mínima" value={`${selectedVariant.b2c_min_order_quantity} unidades`} />
+               {selectedVariant.min_order_quantity > 1 && (
+                 <DetailRow label="Compra mínima" value={`${selectedVariant.min_order_quantity} unidades`} />
                )}
-               <DetailRow label="Máximo por compra" value={`${selectedVariant.b2c_max_order_quantity} ${selectedVariant.b2c_max_order_quantity === 1 ? "unidad" : "unidades"}`} />
+               <DetailRow label="Máximo por compra" value={`${selectedVariant.max_order_quantity} ${selectedVariant.max_order_quantity === 1 ? "unidad" : "unidades"}`} />
               {selectedVariant.facets.recommend_use && (
                 <DetailRow
                   label="Uso recomendado"
