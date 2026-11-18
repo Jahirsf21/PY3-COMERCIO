@@ -7,6 +7,8 @@ import { get_available_quantity_by_size } from "@/lib/catalog/stock"
 import { get_product_quantity_limits } from "@/lib/shared/utils"
 import type { Store, StoreCartAvailability, StoreCartChange, StoreCartLineAvailability, StoreCartLineStatus, StoreCartProduct, StoreCartReconciliation, StoreGroup } from "@/lib/stores/types"
 
+const store_storage_key = "space-shop-store"
+
 // Los nombres coinciden con stock_by_location del catálogo en ambos canales.
 const stores: Store[] = [
   { id: "san-jose-tienda-escazu", province: "San José", locale_name: "Tienda Escazú" },
@@ -169,7 +171,7 @@ export function get_store_unavailable_notice(store: Store, stores_with_stock: st
  */
 export function get_stored_store(): Store | null {
   try {
-    return get_store(window.localStorage.getItem("space-shop-store"))
+    return get_store(window.localStorage.getItem(store_storage_key))
   } catch {
     return null
   }
@@ -183,8 +185,8 @@ export function get_stored_store(): Store | null {
  */
 export function save_store(store: Store | null): void {
   try {
-    if (store) window.localStorage.setItem("space-shop-store", store.id)
-    else window.localStorage.removeItem("space-shop-store")
+    if (store) window.localStorage.setItem(store_storage_key, store.id)
+    else window.localStorage.removeItem(store_storage_key)
   } catch {
     return
   }
