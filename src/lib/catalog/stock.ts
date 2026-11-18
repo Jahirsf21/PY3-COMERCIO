@@ -38,3 +38,23 @@ export function get_available_quantity_by_size(stock_by_location: StockByLocatio
   }
   return available_quantity
 }
+
+/**
+ * Lista las sedes con stock suficiente de una talla o de cualquier talla.
+ * @param stock_by_location Stock por sede de la variante.
+ * @param selected_size Talla, o null para cualquier talla.
+ * @param min_quantity Unidades mínimas que debe tener la sede.
+ * @returns Nombres de las sedes, sin repetir.
+ */
+export function get_stores_with_stock(stock_by_location: StockByLocation[], selected_size: string | null, min_quantity = 1): string[] {
+  if (!Array.isArray(stock_by_location)) return []
+  const names = new Set<string>()
+  for (const location of stock_by_location) {
+    if (!location || !is_record(location.sizes)) continue
+    const quantities = selected_size === null
+      ? Object.values(location.sizes).map((stock) => stock?.stock_quantity)
+      : [location.sizes[selected_size]?.stock_quantity]
+    if (quantities.some((quantity) => is_non_negative_integer(quantity) && quantity >= min_quantity)) names.add(location.locale_name)
+  }
+  return [...names]
+}

@@ -149,6 +149,21 @@ export function get_available_quantity_text(available_quantity: number, store: S
 }
 
 /**
+ * Describe que la sede elegida no tiene el producto y en qué otras sedes hay.
+ * @param store Sede elegida.
+ * @param stores_with_stock Sedes con stock del producto.
+ * @param has_size Indica si se eligió una talla.
+ * @returns Texto del aviso.
+ */
+export function get_store_unavailable_notice(store: Store, stores_with_stock: string[], has_size: boolean): string {
+  const subject = has_size ? "esta talla" : "este color"
+  const others = stores_with_stock.filter((name) => name !== store.locale_name)
+  if (others.length === 0) return `${store.locale_name} no tiene ${subject} y ninguna otra tienda tiene unidades.`
+  const list = others.length === 1 ? others[0] : `${others.slice(0, -1).join(", ")} y ${others[others.length - 1]}`
+  return `${store.locale_name} no tiene ${subject}. Disponible en ${list}.`
+}
+
+/**
  * Recupera el identificador de la tienda guardada y lo comprueba contra el registro de locales.
  * @returns Tienda registrada, o null si no existe una selección válida o falla la lectura.
  */

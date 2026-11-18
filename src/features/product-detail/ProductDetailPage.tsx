@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom"
 import { CheckIcon, MapPinIcon, PackageCheckIcon, StarIcon } from "lucide-react"
 import { cn } from "cn"
 import type { VariantsResult } from "@/lib/catalog/types"
-import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
+import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock, get_stores_with_stock } from "@/lib/catalog/catalog"
 import { get_cart_quantity_limits } from "@/lib/cart/cart"
 import { AddToCartForm } from "@/features/product-detail/AddToCartForm"
 import { ProductSuggestions } from "@/features/product-detail/ProductSuggestions"
@@ -11,7 +11,7 @@ import { ShopHeader } from "@/components/shop-header"
 import { format_price } from "@/lib/shared/utils"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
-import { get_available_quantity_text } from "@/lib/stores/stores"
+import { get_available_quantity_text, get_store_unavailable_notice } from "@/lib/stores/stores"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
 function ProductDetailSkeleton() {
@@ -137,6 +137,10 @@ export default function ProductDetailPage() {
   const availableQuantity = selectedSize ? get_available_quantity_by_size(stockByLocation, selectedSize, selected_store) : 0;
   const quantityLimits = get_cart_quantity_limits(selectedVariant, availableQuantity);
   const isAvailable = quantityLimits !== null && quantityLimits.max_quantity >= quantityLimits.min_quantity;
+  const showsStoreNotice = selected_store !== null && (selectedSize ? !isAvailable : sizes.length > 0 && availableSizes === 0);
+  const storeNotice = showsStoreNotice && selected_store
+    ? get_store_unavailable_notice(selected_store, get_stores_with_stock(stockByLocation, selectedSize, selectedVariant.min_order_quantity), Boolean(selectedSize))
+    : null;
 
   return (
     <div className="min-h-dvh bg-background">
@@ -287,19 +291,19 @@ export default function ProductDetailPage() {
 
             <div className={cn(
               "flex items-center gap-3 rounded-lg border p-4",
-              !selectedSize || isAvailable ? "border-input" : "border-destructive/40 bg-destructive/5",
+              (!selectedSize || isAvailable) && !storeNotice ? "border-input" : "border-destructive/40 bg-destructive/5",
             )}>
               <PackageCheckIcon aria-hidden="true" className="size-5 shrink-0" />
               <div>
                 <p className="font-medium">
-                  {!selectedSize ? "Selecciona una talla" : isAvailable ? "Disponible" : "No disponible"}
+                  {storeNotice ? "No disponible en esta tienda" : !selectedSize ? "Selecciona una talla" : isAvailable ? "Disponible" : "No disponible"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {!selectedSize
+                <p role={storeNotice ? "status" : undefined} className="text-sm text-muted-foreground">
+                  {storeNotice ?? (!selectedSize
                     ? "La disponibilidad depende del color y la talla."
                     : isAvailable
                       ? get_available_quantity_text(availableQuantity ?? 0, selected_store)
-                      : "Prueba con otra talla o color."}
+                      : "Prueba con otra talla o color.")}
                 </p>
               </div>
             </div>
