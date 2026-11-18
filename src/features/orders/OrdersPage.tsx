@@ -14,7 +14,7 @@ import { cn, format_price } from "@/lib/shared/utils"
  * @returns Listado de pedidos o estado vacío si todavía no se han generado compras.
  */
 export default function OrdersPage() {
-  const { orders, storage_error, unsaved_order_ids } = useOrders()
+  const { orders, orders_read_status, storage_error, unsaved_order_ids } = useOrders()
 
   return (
     <div className="min-h-dvh bg-background">
@@ -26,7 +26,9 @@ export default function OrdersPage() {
         </div>
         <OrdersNotice />
         {orders.length === 0 ? (
-          !storage_error && (
+          orders_read_status === "loading" ? (
+            <p role="status" className="text-sm text-muted-foreground">Consultando tus pedidos…</p>
+          ) : orders_read_status === "ready" && !storage_error && (
             <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border border-input px-6 py-12 text-center">
               <ClipboardListIcon aria-hidden="true" className="mb-4 size-10 text-muted-foreground" />
               <h2 className="text-lg font-semibold">Todavía no tienes pedidos</h2>

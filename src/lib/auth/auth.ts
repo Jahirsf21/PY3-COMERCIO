@@ -2,6 +2,7 @@ import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import type { Company, LoginCredentials, LoginResult, User, UserRecord, UserRole } from "@/lib/auth/types"
 import { get_filter_value, get_stored_json, is_nonempty_string, is_record } from "@/lib/shared/utils"
 
+const session_storage_key = "space-shop-session"
 const user_roles: UserRole[] = ["B2C", "B2B", "ADMIN"]
 
 /**
@@ -147,7 +148,7 @@ export function parse_session_user(value: unknown): User | null {
  * @returns Usuario de la sesión, o null si no hay una sesión válida o falla la lectura.
  */
 export function get_stored_session(): User | null {
-  return parse_session_user(get_stored_json("space-shop-session"))
+  return parse_session_user(get_stored_json(session_storage_key))
 }
 
 /**
@@ -157,8 +158,8 @@ export function get_stored_session(): User | null {
  */
 export function save_session(user: User | null): boolean {
   try {
-    if (user) window.localStorage.setItem("space-shop-session", JSON.stringify(user))
-    else window.localStorage.removeItem("space-shop-session")
+    if (user) window.localStorage.setItem(session_storage_key, JSON.stringify(user))
+    else window.localStorage.removeItem(session_storage_key)
     return true
   } catch {
     return false

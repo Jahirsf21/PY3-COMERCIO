@@ -88,11 +88,12 @@ export default function Checkout() {
         toast.add({ title: "Revisa tu pedido", description: prepared.message, type: "error" })
         return
       }
-      const order = create_order(prepared.order)
-      if (!order) {
-        toast.add({ title: "No pudimos guardar el pedido", description: "Revisa los permisos de almacenamiento del navegador e intenta nuevamente.", type: "error" })
+      const result = create_order(prepared.order)
+      if (result.status === "rejected") {
+        toast.add({ title: "No pudimos guardar el pedido", description: result.message, type: "error" })
         return
       }
+      const { order } = result
       clear_stored_checkout_form_data(user_id)
       startTransition(() => {
         clear_cart()

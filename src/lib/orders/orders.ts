@@ -8,9 +8,8 @@ import { get_cart_validation } from "@/lib/catalog/catalog"
 import { get_sales_channel } from "@/lib/channel/channel"
 import { validate_buyer_fields, validate_delivery_fields, validate_terms_acceptance } from "@/lib/checkout/checkout"
 import { get_store } from "@/lib/stores/stores"
-import { get_stored_json, is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import { is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price } from "@/lib/shared/utils"
 
-const orders_storage_key = "space-shop-orders:v2"
 const order_id_pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 /**
@@ -291,23 +290,6 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
     })
   }
   return [...orders_by_id.values()]
-}
-
-/**
- * Obtiene los pedidos guardados en localStorage y los valida mediante parse_orders_data().
- * @returns Pedidos válidos, o un arreglo vacío si no se pueden recuperar.
- */
-export function get_stored_orders(): OrderDetails[] {
-  return parse_orders_data(get_stored_json(orders_storage_key))
-}
-
-/**
- * Guarda los pedidos en localStorage, o elimina la clave si no hay pedidos.
- * @param orders Pedidos que se desean guardar.
- * @returns true si se guardó; false si el navegador rechaza la operación.
- */
-export function save_orders(orders: OrderDetails[]): boolean {
-  return save_stored_list(orders_storage_key, orders)
 }
 
 /**

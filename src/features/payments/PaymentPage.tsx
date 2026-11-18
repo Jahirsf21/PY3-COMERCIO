@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ShopHeader } from "@/components/shop-header"
 import { OrderProducts } from "@/features/orders/components/OrderProducts"
+import { OrdersNotice } from "@/features/orders/components/OrdersNotice"
 import { PaymentForm } from "@/features/payments/components/PaymentForm"
 import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrderSummary"
 import { PaymentNoticeDialog } from "@/features/payments/components/PaymentNoticeDialog"
@@ -22,7 +23,7 @@ type PaymentFeedback = {
 
 export default function PaymentPage() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { get_order, storage_error, unsaved_order_ids, retry_save_orders } = useOrders()
+  const { get_order, orders_read_status, storage_error, unsaved_order_ids, retry_save_orders } = useOrders()
   const [feedback, set_feedback] = useState<PaymentFeedback | null>(null)
   const [dismissed_notice_key, set_dismissed_notice_key] = useState<string | null>(null)
   const order = orderId ? get_order(orderId) : undefined
@@ -84,12 +85,14 @@ export default function PaymentPage() {
     <div className="min-h-dvh bg-background">
       <ShopHeader sticky />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
+        {!storage_error && <OrdersNotice />}
         {!order ? (
           <section className="rounded-xl border border-input bg-card p-6">
-            <h1 className="text-2xl font-semibold">No encontramos esta orden</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Verifica el enlace y utiliza el navegador donde realizaste la compra.
-            </p>
+            <h1 className="text-2xl font-semibold">{orders_read_status === "loading" ? "Buscando la orden…"
+              : storage_error || orders_read_status === "error" ? "No pudimos recuperar esta orden" : "No encontramos esta orden"}</h1>
+            {orders_read_status === "ready" && !storage_error && (
+              <p className="mt-2 text-sm text-muted-foreground">Verifica el enlace y la sesión con la que realizaste la compra.</p>
+            )}
           </section>
         ) : (
           <>

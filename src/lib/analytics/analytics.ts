@@ -3,6 +3,8 @@ import { is_valid_role } from "@/lib/auth/auth"
 import { get_stored_json, get_user_storage_key, is_nonempty_string, is_positive_integer, is_record, is_string_list, is_valid_currency, is_valid_date, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 
 export const analytics_event_types: AnalyticsEventType[] = ["login", "search", "product_view", "add_to_cart", "checkout_start", "purchase"]
+export const events_storage_key = "space-shop-events"
+const guest_session_storage_key = "space-shop-guest-session"
 const max_stored_events = 500
 
 /**
@@ -12,14 +14,14 @@ const max_stored_events = 500
  */
 export function get_guest_session_id(): string {
   try {
-    const stored_id = window.localStorage.getItem("space-shop-guest-session")
+    const stored_id = window.localStorage.getItem(guest_session_storage_key)
     if (stored_id && /^guest-[0-9a-f-]{36}$/.test(stored_id)) return stored_id
   } catch {
     return `guest-${window.crypto.randomUUID()}`
   }
   const guest_id = `guest-${window.crypto.randomUUID()}`
   try {
-    window.localStorage.setItem("space-shop-guest-session", guest_id)
+    window.localStorage.setItem(guest_session_storage_key, guest_id)
   } catch {
     return guest_id
   }
@@ -81,7 +83,7 @@ export function parse_analytics_events(events_data: unknown): AnalyticsEvent[] {
  * @returns Eventos válidos, o un arreglo vacío si no se pueden recuperar.
  */
 export function get_stored_events(owner_id: string): AnalyticsEvent[] {
-  return parse_analytics_events(get_stored_json(get_user_storage_key("space-shop-events", owner_id)))
+  return parse_analytics_events(get_stored_json(get_user_storage_key(events_storage_key, owner_id)))
 }
 
 /**
@@ -91,7 +93,7 @@ export function get_stored_events(owner_id: string): AnalyticsEvent[] {
  * @returns true si se guardaron; false si el navegador rechaza la operación.
  */
 export function save_events(owner_id: string, events: AnalyticsEvent[]): boolean {
-  return save_stored_list(get_user_storage_key("space-shop-events", owner_id), events)
+  return save_stored_list(get_user_storage_key(events_storage_key, owner_id), events)
 }
 
 /**

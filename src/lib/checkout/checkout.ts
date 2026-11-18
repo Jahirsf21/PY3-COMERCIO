@@ -9,6 +9,8 @@ import {
 import { get_user_storage_key, is_valid_date } from "@/lib/shared/utils"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo } from "@/lib/checkout/types"
 
+const checkout_storage_key = "space-shop-checkout"
+
 /**
  * Construye los valores iniciales del formulario de compra.
  * Selecciona Nacional como tipo de identificación y Costa Rica como país de entrega.
@@ -130,7 +132,7 @@ function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
 export function get_stored_checkout_form_data(user_id: string | null): CheckoutFormData {
   if (!user_id) return create_checkout_form_data()
   try {
-    return parse_checkout_form_data(JSON.parse(window.localStorage.getItem(get_user_storage_key("space-shop-checkout", user_id)) ?? "null"))
+    return parse_checkout_form_data(JSON.parse(window.localStorage.getItem(get_user_storage_key(checkout_storage_key, user_id)) ?? "null"))
   } catch {
     return create_checkout_form_data()
   }
@@ -145,7 +147,7 @@ export function get_stored_checkout_form_data(user_id: string | null): CheckoutF
 export function save_checkout_form_data(user_id: string | null, form_data: CheckoutFormData): void {
   if (!user_id) return
   try {
-    window.localStorage.setItem(get_user_storage_key("space-shop-checkout", user_id), JSON.stringify(form_data))
+    window.localStorage.setItem(get_user_storage_key(checkout_storage_key, user_id), JSON.stringify(form_data))
   } catch {
     return
   }
@@ -159,7 +161,7 @@ export function save_checkout_form_data(user_id: string | null, form_data: Check
 export function clear_stored_checkout_form_data(user_id: string | null): void {
   if (!user_id) return
   try {
-    window.localStorage.removeItem(get_user_storage_key("space-shop-checkout", user_id))
+    window.localStorage.removeItem(get_user_storage_key(checkout_storage_key, user_id))
   } catch {
     return
   }
