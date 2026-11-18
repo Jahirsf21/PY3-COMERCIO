@@ -124,8 +124,8 @@ function parse_checkout_form_data(stored_data: unknown): CheckoutFormData {
 
 /**
  * Obtiene el borrador del formulario de compra de un usuario y lo valida mediante parse_checkout_form_data().
- * @param user_id Identificador del usuario con sesión iniciada, o null si no hay sesión.
- * @returns Datos del formulario, o los valores iniciales si no hay sesión, no se pueden leer o el JSON es inválido.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
+ * @returns Datos del formulario, o los valores iniciales si no hay dueño, no se pueden leer o el JSON es inválido.
  */
 export function get_stored_checkout_form_data(user_id: string | null): CheckoutFormData {
   if (!user_id) return create_checkout_form_data()
@@ -137,8 +137,8 @@ export function get_stored_checkout_form_data(user_id: string | null): CheckoutF
 }
 
 /**
- * Guarda el borrador del formulario de compra de un usuario en localStorage. Sin sesión no guarda nada.
- * @param user_id Identificador del usuario dueño del borrador, o null si no hay sesión.
+ * Guarda el borrador del formulario de compra en localStorage.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
  * @param form_data Información del comprador y la entrega.
  * @returns No retorna ningún valor.
  */
@@ -153,7 +153,7 @@ export function save_checkout_form_data(user_id: string | null, form_data: Check
 
 /**
  * Elimina el borrador del formulario de compra de un usuario guardado en localStorage.
- * @param user_id Identificador del usuario dueño del borrador, o null si no hay sesión.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
  * @returns No retorna ningún valor.
  */
 export function clear_stored_checkout_form_data(user_id: string | null): void {
