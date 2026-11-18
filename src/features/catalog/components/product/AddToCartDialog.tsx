@@ -9,12 +9,12 @@ import { toast } from "@/components/ui/toast"
 import { get_cart_add_quantity_limits, get_cart_add_quantity_message, get_cart_item_id, get_cart_quantity_limits, get_product_unit_price, is_valid_cart_quantity } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import { useAuth } from "@/lib/auth/authContext"
-import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
+import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock, get_stores_with_stock } from "@/lib/catalog/catalog"
 import type { ProductHit, VariantsResult } from "@/lib/catalog/types"
 import { cn, format_price } from "@/lib/shared/utils"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
-import { get_available_quantity_text } from "@/lib/stores/stores"
+import { get_available_quantity_text, get_store_unavailable_notice } from "@/lib/stores/stores"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const { user } = useAuth()
@@ -62,6 +62,10 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const additionalLimits = get_cart_add_quantity_limits(limits, cartQuantity)
   const quantityToAdd = additionalLimits?.min_quantity ?? 0
   const limitMessage = selectedSize ? get_cart_add_quantity_message(limits, cartQuantity) : null
+  const isSizeAvailable = limits !== null && limits.max_quantity >= limits.min_quantity
+  const storeNotice = selected_store && selectedVariant && (selectedSize ? !isSizeAvailable : sizes.length > 0 && availableSizes === 0)
+    ? get_store_unavailable_notice(selected_store, get_stores_with_stock(locations, selectedSize, selectedVariant.min_order_quantity), Boolean(selectedSize))
+    : null
   const canAdd = Boolean(selectedVariant && selectedSize && is_valid_cart_quantity(quantityToAdd, additionalLimits) && !isSubmitting)
   const detailParams = new URLSearchParams({ variante: preview.sku })
   if (selectedSize) detailParams.set("talla", selectedSize)
@@ -242,6 +246,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                         : limitMessage ?? `${get_available_quantity_text(availableQuantity ?? 0, selected_store)}${quantityToAdd > 1 ? ` · Se añadirán ${quantityToAdd} unidades.` : ""}`}
                     </p>
                   )}
+                  {!isLoading && storeNotice && <p role="status" className="text-sm text-destructive">{storeNotice}</p>}
                 </div>
                 {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               </div>

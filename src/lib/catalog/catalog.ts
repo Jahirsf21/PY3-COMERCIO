@@ -8,7 +8,7 @@ import { get_suggestions } from "@/lib/shared/suggestions"
 import type { Store } from "@/lib/stores/types"
 import { get_filter_value } from "@/lib/shared/utils"
 
-export { get_available_quantity_by_size, get_sizes_from_stock } from "@/lib/catalog/stock"
+export { get_available_quantity_by_size, get_sizes_from_stock, get_stores_with_stock } from "@/lib/catalog/stock"
 
 /**
  * Obtiene las variantes de un producto desde el índice principal del canal, sin usar la caché del cliente.
