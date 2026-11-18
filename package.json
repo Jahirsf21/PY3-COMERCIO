@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "predeploy": "pnpm run build",
     "deploy": "gh-pages -d dist",
-    "seed-products": "node scripts/seed-products.mjs",
+    "seed-products-b2c": "node scripts/seed-products-b2c.mjs",
+    "seed-products-b2b": "node scripts/seed-products-b2b.mjs",
     "seed-users": "node scripts/seed-users.mjs"
   },
   "dependencies": {
