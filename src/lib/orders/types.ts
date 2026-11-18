@@ -1,6 +1,7 @@
+import type { Company } from "@/lib/auth/types"
 import type { SalesChannel } from "@/lib/channel/types"
 import type { ProductImage } from "@/lib/catalog/types"
-import type { CartItem, CartValidationResult } from "@/lib/cart/types"
+import type { CartItem, CartQuantityConditions, CartValidationResult } from "@/lib/cart/types"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo, DeliveryMethod, TermsAcceptance } from "@/lib/checkout/types"
 import type { CardPaymentData, Payment } from "@/lib/payments/types"
 import type { Store } from "@/lib/stores/types"
@@ -10,8 +11,16 @@ import type { Store } from "@/lib/stores/types"
  */
 export type OrderStatus = "PENDING" | "CONFIRMED" | "CANCELLED"
 
+/** Propietario y contexto comercial del pedido al momento de la compra. */
+export type OrderCustomer = {
+  user_id: string
+  role: "B2C" | "B2B" | "GUEST"
+  channel: SalesChannel
+  company: Company | null
+}
+
 /**
- * Producto de un pedido con su talla, cantidad, precio y subtotal
+ * Línea de un pedido con el precio, las condiciones y el stock verificados.
  */
 export type OrderItem = {
   id: string
@@ -24,6 +33,8 @@ export type OrderItem = {
   unit_price: number
   quantity: number
   subtotal: number
+  conditions: CartQuantityConditions
+  available_quantity: number
 }
 
 /**
@@ -40,12 +51,11 @@ export type OrderPagination = {
  * Datos del pedido, comprador, entrega y montos de la compra.
  * tax es el monto del IVA y shipping el costo de envío.
  * termsAcceptance registra la aceptación de los Términos y Condiciones; todo pedido debe tenerla.
- * user_id identifica al usuario o a la sesión anónima propietaria; null conserva pedidos antiguos sin dueño conocido.
+ * order_number es la referencia global que se muestra al cliente.
  */
-export type Order = {
+export type Order = OrderCustomer & {
   id: string
-  user_id: string | null
-  order_number: number
+  order_number: string
   created_at: string
   buyer: BuyerInfo
   store: Store
@@ -79,7 +89,7 @@ export type PrepareOrderInput = CheckoutFormData & {
 export type PreparedOrderItem = Omit<OrderItem, "id" | "order_id">
 
 /** Datos verificados de una única sede, todavía sin identificadores ni pago. */
-export type PreparedOrder = Pick<Order, "buyer" | "store" | "delivery_method" | "delivery" | "currency" | "subtotal" | "tax" | "shipping" | "total" | "termsAcceptance"> & {
+export type PreparedOrder = Pick<Order, "buyer" | "channel" | "store" | "delivery_method" | "delivery" | "currency" | "subtotal" | "tax" | "shipping" | "total" | "termsAcceptance"> & {
   items: PreparedOrderItem[]
 }
 

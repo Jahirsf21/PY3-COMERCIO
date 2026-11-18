@@ -39,7 +39,7 @@ export type AnalyticsEventPayloads = {
   }
   purchase: {
     order_id: string
-    order_number: number
+    order_number: string | number
     items_count: number
     total: number
     currency: string

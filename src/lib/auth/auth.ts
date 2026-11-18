@@ -40,7 +40,7 @@ export async function hash_password(password: string): Promise<string> {
  * @param value Valor recibido.
  * @returns Empresa con nombre y cédula jurídica, o null si no es válida.
  */
-function parse_company(value: unknown): Company | null {
+export function parse_company(value: unknown): Company | null {
   if (!is_record(value) || !is_nonempty_string(value.name) || !is_nonempty_string(value.legal_id)) return null
   return { name: value.name, legal_id: value.legal_id }
 }
