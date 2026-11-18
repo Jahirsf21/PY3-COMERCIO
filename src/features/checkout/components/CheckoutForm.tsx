@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react"
 import type { SubmitEvent } from "react"
 import { Button } from "@/components/ui/button"
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSeparator, FieldSet } from "@/components/ui/field"
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLegend, FieldSeparator, FieldSet } from "@/components/ui/field"
 import { CheckoutBuyerFields } from "@/features/checkout/components/CheckoutBuyerFields"
 import { CheckoutDeliveryFields } from "@/features/checkout/components/CheckoutDeliveryFields"
 import { CheckoutDeliveryMethod } from "@/features/checkout/components/CheckoutDeliveryMethod"
 import { CheckoutTermsAcceptance } from "@/features/checkout/components/CheckoutTermsAcceptance"
-import { StoreSelector } from "@/features/stores/StoreSelector"
+import { CheckoutStoreSelector } from "@/features/checkout/components/CheckoutStoreSelector"
 import { validate_buyer_fields, validate_delivery_fields, validate_terms_acceptance } from "@/lib/checkout/checkout"
 import { get_name_from_hacienda, validate_identification } from "@/lib/identification/identification"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo, DeliveryMethod } from "@/lib/checkout/types"
 import { useCart } from "@/lib/cart/cartContext"
 import { useStores } from "@/lib/stores/storesContext"
+import type { StoreCartAvailability } from "@/lib/stores/types"
 
 const pending_name_message = "Espera a que se complete la consulta del nombre antes de continuar."
 
@@ -22,10 +23,13 @@ type CheckoutFormProps = {
   isGeneratingOrder: boolean
   isAssigningStore: boolean
   storeAssignmentError?: string
+  storeAvailability: StoreCartAvailability[] | null
+  isCheckingAvailability: boolean
+  suggestedStoreId: string | null
   onRetryStore: () => void
 }
 
-export function CheckoutForm({ formData, onChange, onSubmit, isGeneratingOrder, isAssigningStore, storeAssignmentError, onRetryStore }: CheckoutFormProps) {
+export function CheckoutForm({ formData, onChange, onSubmit, isGeneratingOrder, isAssigningStore, storeAssignmentError, storeAvailability, isCheckingAvailability, suggestedStoreId, onRetryStore }: CheckoutFormProps) {
   const { can_checkout } = useCart()
   const { selected_store } = useStores()
   const formRef = useRef<HTMLFormElement>(null)
@@ -247,28 +251,33 @@ export function CheckoutForm({ formData, onChange, onSubmit, isGeneratingOrder, 
           />
           <FieldSet aria-labelledby="checkout-store-title">
             <FieldLegend id="checkout-store-title" className="font-semibold">Tienda del pedido</FieldLegend>
-            {formData.delivery_method === "PICKUP" ? (
-              <Field data-invalid={Boolean(!selected_store && storeError)}>
-                <FieldLabel htmlFor="checkout-pickup-store">Tienda de retiro (obligatorio)</FieldLabel>
-                <StoreSelector id="checkout-pickup-store" label="Tienda de retiro" required
-                  error={selected_store ? undefined : storeError} className="sm:w-full" onChange={() => setStoreError(undefined)} />
-                <FieldDescription>{selected_store ? selected_store.province : "Elige el local donde quieres retirar tu pedido."}</FieldDescription>
-                <FieldError id="checkout-pickup-store-error">{!selected_store && storeError}</FieldError>
-              </Field>
-            ) : selected_store ? (
-              <div className="rounded-lg border border-input bg-muted/40 p-4">
-                <p className="text-sm font-medium">{selected_store.locale_name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{selected_store.province}</p>
-              </div>
-            ) : isAssigningStore ? (
-              <p role="status" className="text-sm text-muted-foreground">Buscando la tienda con mayor stock para tu pedido…</p>
-            ) : storeAssignmentError ? (
-              <div className="space-y-3">
-                <FieldError id="checkout-store-assignment-error">{storeAssignmentError}</FieldError>
-                <Button id="checkout-store-retry" type="button" variant="outline" className="cursor-pointer" onClick={onRetryStore}>Reintentar selección de tienda</Button>
-              </div>
+            {formData.delivery_method === null ? (
+              <FieldDescription>Elige envío o retiro para ver la disponibilidad de tu carrito en cada tienda.</FieldDescription>
             ) : (
-              <FieldDescription>Aún no hay una tienda seleccionada. Para envío elegiremos una según el stock; para retiro puedes elegir el local.</FieldDescription>
+              <Field data-invalid={Boolean(!selected_store && storeError)}>
+                <FieldDescription>
+                  {formData.delivery_method === "PICKUP"
+                    ? "Elige la tienda donde quieres retirar tu pedido (obligatorio)."
+                    : isAssigningStore
+                      ? "Buscando la tienda con más disponibilidad para tu pedido…"
+                      : "Enviamos desde la tienda sugerida; puedes elegir otra."}
+                  {" "}Si eliges una tienda sin stock suficiente, ajustaremos tu carrito y te avisaremos.
+                </FieldDescription>
+                <CheckoutStoreSelector
+                  label={formData.delivery_method === "PICKUP" ? "Tienda de retiro" : "Tienda de envío"}
+                  availability={storeAvailability}
+                  isChecking={isCheckingAvailability}
+                  suggestedStoreId={suggestedStoreId}
+                  error={selected_store ? undefined : storeError}
+                  onSelect={() => setStoreError(undefined)}
+                />
+                {storeAssignmentError && !selected_store && (
+                  <div className="space-y-3">
+                    <FieldError id="checkout-store-assignment-error">{storeAssignmentError}</FieldError>
+                    <Button id="checkout-store-retry" type="button" variant="outline" className="cursor-pointer" onClick={onRetryStore}>Reintentar</Button>
+                  </div>
+                )}
+              </Field>
             )}
           </FieldSet>
           {formData.delivery_method === "SHIPPING" && (
