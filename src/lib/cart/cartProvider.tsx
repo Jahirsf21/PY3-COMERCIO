@@ -5,7 +5,6 @@ import { cart_reducer, create_cart_item, get_cart_add_quantity_limits, get_cart_
 import { get_catalog_quantity_limits, get_cart_validation } from "@/lib/catalog/catalog"
 import CartContext from "@/lib/cart/cartContext"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
-import { useAuth } from "@/lib/auth/authContext"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { reconcile_store_cart } from "@/lib/stores/stores"
@@ -22,10 +21,8 @@ import { is_positive_integer } from "@/lib/shared/utils"
  */
 export function CartProvider({ children }: { children: ReactNode }) {
   const { selected_store, get_selected_store, report_cart_changes } = useStores()
-  const { user } = useAuth()
   const { channel, get_channel } = useChannel()
-  const { track_event } = useAnalytics()
-  const user_id = user?.id ?? null
+  const { owner_id: user_id, track_event } = useAnalytics()
   const [cart_state, set_cart_state] = useState(() => ({ user_id, items: get_stored_cart(user_id) }))
   const cart = cart_state.items
   const current_cart = useRef(cart)

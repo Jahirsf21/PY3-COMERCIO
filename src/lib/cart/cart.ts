@@ -57,9 +57,8 @@ export function parse_cart_data(cart_data: unknown): CartItem[] {
 
 /**
  * Obtiene el carrito de un usuario guardado en localStorage y lo valida mediante parse_cart_data().
- * Sin sesión no hay carrito guardado.
- * @param user_id Identificador del usuario con sesión iniciada, o null si no hay sesión.
- * @returns Líneas válidas, o un arreglo vacío si no hay sesión o no se pueden recuperar.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
+ * @returns Líneas válidas, o un arreglo vacío si no hay dueño o no se pueden recuperar.
  */
 export function get_stored_cart(user_id: string | null): CartItem[] {
   if (!user_id) return []
@@ -68,8 +67,7 @@ export function get_stored_cart(user_id: string | null): CartItem[] {
 
 /**
  * Guarda las líneas del carrito de un usuario en localStorage, o elimina su clave si el carrito está vacío.
- * Sin sesión no guarda nada: el carrito queda solo en memoria.
- * @param user_id Identificador del usuario dueño del carrito, o null si no hay sesión.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
  * @param cart Líneas del carrito.
  * @returns true si se guardó o no había nada que guardar; false si el navegador rechaza la operación.
  */

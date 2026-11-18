@@ -8,7 +8,6 @@ import { CheckoutOrderSummary } from "@/features/checkout/components/CheckoutOrd
 import { clear_stored_checkout_form_data, get_stored_checkout_form_data, save_checkout_form_data } from "@/lib/checkout/checkout"
 import type { CheckoutFormData } from "@/lib/checkout/types"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
-import { useAuth } from "@/lib/auth/authContext"
 import { useCart } from "@/lib/cart/cartContext"
 import { useOrders } from "@/lib/orders/ordersContext"
 import { prepare_order } from "@/lib/orders/orders"
@@ -19,11 +18,9 @@ import { useStores } from "@/lib/stores/storesContext"
 import type { StoreCartProduct } from "@/lib/stores/types"
 
 export default function Checkout() {
-  const { user } = useAuth()
-  const user_id = user?.id ?? null
+  const { owner_id: user_id, track_event } = useAnalytics()
   const [formData, setFormData] = useState(() => get_stored_checkout_form_data(user_id))
   const { cart, get_cart, clear_cart, revalidate_cart, total, total_items } = useCart()
-  const { track_event } = useAnalytics()
   const tracked_checkout = useRef(false)
   const { create_order } = useOrders()
   const { selected_store, get_selected_store, select_store } = useStores()
