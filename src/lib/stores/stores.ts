@@ -1,9 +1,11 @@
 import { get_cart_adjustment_reason } from "@/lib/cart/cart"
 import type { CartValidationResult } from "@/lib/cart/types"
 import { get_product_variants } from "@/lib/catalog/catalog"
+import type { ProductHit } from "@/lib/catalog/types"
 import type { SalesChannel } from "@/lib/channel/types"
 import { get_available_quantity_by_size } from "@/lib/catalog/stock"
-import type { Store, StoreCartChange, StoreCartProduct, StoreCartReconciliation, StoreGroup } from "@/lib/stores/types"
+import { get_product_quantity_limits } from "@/lib/shared/utils"
+import type { Store, StoreCartAvailability, StoreCartChange, StoreCartLineAvailability, StoreCartLineStatus, StoreCartProduct, StoreCartReconciliation, StoreGroup } from "@/lib/stores/types"
 
 // Los nombres coinciden con stock_by_location del catálogo en ambos canales.
 const stores: Store[] = [
@@ -35,42 +37,103 @@ export function get_store_groups(): StoreGroup[] {
 }
 
 /**
- * Elige una sola sede con la mayor suma de stock original de las variantes y tallas del carrito.
- * No suma inventarios entre sedes ni limita la puntuación a las cantidades solicitadas.
- * Los empates conservan el orden del registro de tiendas.
- * @param products Variantes y tallas presentes en el carrito.
+ * Calcula la disponibilidad de una línea del carrito en una sede.
+ * @param product Línea del carrito.
+ * @param variant Variante del índice del canal, o undefined si no existe.
+ * @param store Sede que se evalúa.
+ * @returns Estado de la línea y stock de la talla en la sede.
+ */
+export function get_store_line_availability(product: StoreCartProduct, variant: ProductHit | undefined, store: Store): StoreCartLineAvailability {
+  const base = { item_id: product.id, quantity: product.quantity }
+  if (!variant) return { ...base, status: "unavailable", available_quantity: 0 }
+  const available_quantity = Array.isArray(variant.stock_by_location) ? get_available_quantity_by_size(variant.stock_by_location, product.selected_size, store) : null
+  const limits = get_product_quantity_limits(variant, available_quantity)
+  if (available_quantity === null || !limits) return { ...base, status: "unknown", available_quantity: null }
+  const { min_quantity, max_quantity, step_quantity } = limits
+  const quantity_cap = Math.min(product.quantity, max_quantity)
+  const quantity = quantity_cap < min_quantity ? 0 : min_quantity + Math.floor((quantity_cap - min_quantity) / step_quantity) * step_quantity
+  const status: StoreCartLineStatus = quantity === 0 ? "unavailable" : quantity === product.quantity ? "available" : "reduced"
+  return { ...base, status, available_quantity }
+}
+
+/**
+ * Calcula la disponibilidad del carrito en cada sede.
+ * @param products Líneas del carrito.
  * @param channel Canal de venta cuyo inventario se consulta.
- * @returns Promesa con la tienda elegida, o null si el carrito está vacío.
- * @throws Si falla una consulta del catálogo o el inventario consultado es inválido.
+ * @returns Promesa con la disponibilidad por sede.
+ */
+export async function get_cart_store_availability(products: StoreCartProduct[], channel: SalesChannel): Promise<StoreCartAvailability[]> {
+  if (products.length === 0) return []
+  const product_ids = [...new Set(products.map((product) => product.product_id))]
+  const responses = await Promise.allSettled(product_ids.map((product_id) => get_product_variants(product_id, channel)))
+  const variants_by_product = new Map(product_ids.map((product_id, index) => {
+    const response = responses[index]
+    return [product_id, response.status === "fulfilled" ? response.value : null] as const
+  }))
+  return stores.map((store) => {
+    const lines = products.map((product): StoreCartLineAvailability => {
+      const variants = variants_by_product.get(product.product_id)
+      if (!variants) return { item_id: product.id, quantity: product.quantity, status: "unknown", available_quantity: null }
+      const variant = variants.find((candidate) => candidate.product_id === product.product_id && candidate.sku === product.sku)
+      return get_store_line_availability(product, variant, store)
+    })
+    const count = (status: StoreCartLineStatus) => lines.filter((line) => line.status === status).length
+    return {
+      store,
+      lines,
+      available_count: count("available"),
+      reduced_count: count("reduced"),
+      unavailable_count: count("unavailable"),
+      unknown_count: count("unknown"),
+      available_units: lines.reduce((total, line) => total + (line.available_quantity ?? 0), 0),
+    }
+  })
+}
+
+/**
+ * Elige la sede que cubre más líneas completas del carrito.
+ * @param availabilities Disponibilidad del carrito por sede.
+ * @returns Sede sugerida, o null si ninguna se pudo comprobar.
+ */
+export function select_best_cart_store(availabilities: StoreCartAvailability[]): Store | null {
+  let best: StoreCartAvailability | null = null
+  for (const availability of availabilities) {
+    if (availability.unknown_count > 0 || availability.lines.length === 0) continue
+    const is_better = !best ||
+      availability.available_count > best.available_count ||
+      (availability.available_count === best.available_count && availability.unavailable_count < best.unavailable_count) ||
+      (availability.available_count === best.available_count && availability.unavailable_count === best.unavailable_count && availability.available_units > best.available_units)
+    if (is_better) best = availability
+  }
+  return best?.store ?? null
+}
+
+/**
+ * Consulta la disponibilidad del carrito y elige la sede sugerida.
+ * @param products Líneas del carrito.
+ * @param channel Canal de venta cuyo inventario se consulta.
+ * @returns Promesa con la sede sugerida, o null si el carrito está vacío.
+ * @throws Si no se pudo comprobar el inventario.
  */
 export async function get_best_cart_store(products: StoreCartProduct[], channel: SalesChannel): Promise<Store | null> {
   if (products.length === 0) return null
-  const unique_products = [...new Map(products.map((product) => [JSON.stringify([product.product_id, product.sku, product.selected_size]), product])).values()]
-  const product_ids = [...new Set(unique_products.map((product) => product.product_id))]
-  const responses = await Promise.all(product_ids.map((product_id) => get_product_variants(product_id, channel)))
-  const variants_by_product = new Map(product_ids.map((product_id, index) => [product_id, responses[index]]))
-  const variants = unique_products.map((product) => {
-    const variant = variants_by_product.get(product.product_id)?.find((candidate) => candidate.product_id === product.product_id && candidate.sku === product.sku)
-    if (!variant) return null
-    if (get_available_quantity_by_size(variant.stock_by_location, product.selected_size) === null) throw new Error("Inventario inválido para elegir la tienda.")
-    return { variant, selected_size: product.selected_size }
-  })
-  let best_store: Store | null = null
-  let best_stock = -1
-  for (const store of stores) {
-    let total_stock = 0
-    for (const product of variants) {
-      if (!product) continue
-      const stock = get_available_quantity_by_size(product.variant.stock_by_location, product.selected_size, store)
-      if (stock === null || !Number.isSafeInteger(total_stock + stock)) throw new Error("Inventario inválido para elegir la tienda.")
-      total_stock += stock
-    }
-    if (total_stock > best_stock) {
-      best_store = store
-      best_stock = total_stock
-    }
-  }
-  return best_store
+  const store = select_best_cart_store(await get_cart_store_availability(products, channel))
+  if (!store) throw new Error("No se pudo comprobar el inventario para elegir la tienda.")
+  return store
+}
+
+/**
+ * Resume en texto la disponibilidad del carrito en una sede.
+ * @param availability Disponibilidad del carrito en la sede.
+ * @returns Texto del resumen.
+ */
+export function get_store_availability_text(availability: StoreCartAvailability): string {
+  const { unknown_count, unavailable_count, reduced_count } = availability
+  if (unknown_count > 0) return "No pudimos comprobar la disponibilidad"
+  const parts: string[] = []
+  if (unavailable_count > 0) parts.push(`Sin stock de ${unavailable_count} ${unavailable_count === 1 ? "producto" : "productos"}`)
+  if (reduced_count > 0) parts.push(`${reduced_count} ${reduced_count === 1 ? "producto" : "productos"} con menos unidades`)
+  return parts.length > 0 ? parts.join(" · ") : "Todo disponible"
 }
 
 /**

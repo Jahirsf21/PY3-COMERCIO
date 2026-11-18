@@ -12,10 +12,10 @@ import { useCart } from "@/lib/cart/cartContext"
 import { useOrders } from "@/lib/orders/ordersContext"
 import { prepare_order } from "@/lib/orders/orders"
 import { format_price } from "@/lib/shared/utils"
-import { get_best_cart_store } from "@/lib/stores/stores"
+import { get_cart_store_availability, select_best_cart_store } from "@/lib/stores/stores"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
-import type { StoreCartProduct } from "@/lib/stores/types"
+import type { StoreCartAvailability, StoreCartProduct } from "@/lib/stores/types"
 
 export default function Checkout() {
   const { owner_id: user_id, track_event } = useAnalytics()
@@ -29,12 +29,17 @@ export default function Checkout() {
   const creating_order = useRef(false)
   const navigate = useNavigate()
   const [store_retry, set_store_retry] = useState(0)
-  const [store_failure, set_store_failure] = useState<{ key: string; message: string } | null>(null)
-  const products_key = JSON.stringify(cart.map(({ product_id, sku, selected_size }) => ({ product_id, sku, selected_size })))
-  const store_request_key = `${products_key}:${channel}:${store_retry}`
+  const [availability, set_availability] = useState<{ key: string; stores: StoreCartAvailability[] } | null>(null)
+  const products_key = JSON.stringify(cart.map(({ id, product_id, sku, selected_size, quantity }): StoreCartProduct => ({ id, product_id, sku, selected_size, quantity })))
+  const availability_key = `${products_key}:${channel}:${store_retry}`
+  const current_availability = availability?.key === availability_key ? availability.stores : null
+  const is_checking_availability = cart.length > 0 && current_availability === null
+  const suggested_store = current_availability ? select_best_cart_store(current_availability) : null
   const needs_store = formData.delivery_method === "SHIPPING" && selected_store === null && cart.length > 0
-  const store_error = needs_store && store_failure?.key === store_request_key ? store_failure.message : undefined
-  const is_assigning_store = needs_store && store_error === undefined
+  const store_error = needs_store && current_availability !== null && suggested_store === null
+    ? "No pudimos comprobar el stock para sugerir una tienda. Reintenta o elige una de la lista."
+    : undefined
+  const is_assigning_store = needs_store && current_availability === null
 
   useEffect(() => { save_checkout_form_data(user_id, formData) }, [user_id, formData])
   useEffect(() => () => { creating_order.current = false }, [])
@@ -45,22 +50,18 @@ export default function Checkout() {
   }, [cart, total, total_items, track_event])
 
   useEffect(() => {
-    if (!needs_store || store_error !== undefined) return
-    let active = true
     const products: StoreCartProduct[] = JSON.parse(products_key)
-    get_best_cart_store(products, channel)
-      .then((store) => {
-        if (!active || get_selected_store() !== null) return
-        if (store) select_store(store.id)
-        else set_store_failure({ key: store_request_key, message: "No pudimos elegir una tienda para este pedido. Intenta nuevamente." })
-      })
-      .catch(() => {
-        if (active && get_selected_store() === null) {
-          set_store_failure({ key: store_request_key, message: "No pudimos consultar el stock para elegir la tienda. Reintenta o selecciona una en el encabezado." })
-        }
-      })
+    if (products.length === 0) return
+    let active = true
+    get_cart_store_availability(products, channel)
+      .then((stores) => { if (active) set_availability({ key: availability_key, stores }) })
+      .catch(() => { if (active) set_availability({ key: availability_key, stores: [] }) })
     return () => { active = false }
-  }, [needs_store, store_error, products_key, store_request_key, channel, get_selected_store, select_store])
+  }, [products_key, channel, availability_key])
+
+  useEffect(() => {
+    if (needs_store && suggested_store && get_selected_store() === null) select_store(suggested_store.id)
+  }, [needs_store, suggested_store, get_selected_store, select_store])
 
   /**
    * Prepara y guarda un pedido únicamente si el carrito, la tienda y el canal siguen vigentes.
@@ -119,6 +120,8 @@ export default function Checkout() {
         <div className="mt-6 space-y-6">
           <CheckoutForm formData={formData} onChange={setFormData} onSubmit={generate_order}
             isGeneratingOrder={is_generating} isAssigningStore={is_assigning_store}
+            storeAvailability={current_availability ?? availability?.stores ?? null} isCheckingAvailability={is_checking_availability}
+            suggestedStoreId={suggested_store?.id ?? null}
             storeAssignmentError={store_error} onRetryStore={() => set_store_retry((retry) => retry + 1)} />
           <CheckoutOrderProducts />
           <CheckoutOrderSummary delivery_method={formData.delivery_method} is_store_ready={selected_store !== null}

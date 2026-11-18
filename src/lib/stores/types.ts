@@ -7,7 +7,28 @@ export type Store = {
 }
 
 export type StoreGroup = { province: string; stores: Store[] }
-export type StoreCartProduct = Pick<CartItem, "product_id" | "sku" | "selected_size">
+export type StoreCartProduct = Pick<CartItem, "id" | "product_id" | "sku" | "selected_size" | "quantity">
+
+/** Estado de una línea del carrito en una sede. */
+export type StoreCartLineStatus = "available" | "reduced" | "unavailable" | "unknown"
+
+export type StoreCartLineAvailability = {
+  item_id: string
+  status: StoreCartLineStatus
+  available_quantity: number | null
+  quantity: number
+}
+
+/** Disponibilidad del carrito en una sede. */
+export type StoreCartAvailability = {
+  store: Store
+  lines: StoreCartLineAvailability[]
+  available_count: number
+  reduced_count: number
+  unavailable_count: number
+  unknown_count: number
+  available_units: number
+}
 
 export type StoreCartChange = {
   item_id: string
