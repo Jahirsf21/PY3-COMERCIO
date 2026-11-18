@@ -79,6 +79,28 @@ export type OrderDetails = Order & {
   payment: Payment | null
 }
 
+/** Registro de Algolia con líneas y pago vinculados por el objectID. */
+export type OrderIndexRecord = Omit<OrderDetails, "id" | "items" | "payment"> & {
+  objectID: string
+  created_at_timestamp: number
+  items: Omit<OrderItem, "order_id">[]
+  payment: Omit<Payment, "order_id"> | null
+}
+
+/** Copia local y pedidos que aún deben publicarse. */
+export type StoredOrders = {
+  orders: OrderDetails[]
+  pending_order_ids: string[]
+}
+
+/** Estado de sesión con los pagos que todavía no se pudieron guardar. */
+export type LocalOrders = StoredOrders & {
+  unsaved_order_ids: string[]
+}
+
+/** Estado de la consulta de pedidos en Algolia. */
+export type OrdersReadStatus = "loading" | "ready" | "error"
+
 /** Formulario de checkout con el carrito, el canal de venta del comprador y la tienda elegida. */
 export type PrepareOrderInput = CheckoutFormData & {
   cart: CartItem[]
@@ -86,6 +108,7 @@ export type PrepareOrderInput = CheckoutFormData & {
   store: Store | null
 }
 
+/** Línea verificada antes de asignarle un identificador y asociarla al pedido. */
 export type PreparedOrderItem = Omit<OrderItem, "id" | "order_id">
 
 /** Datos verificados de una única sede, todavía sin identificadores ni pago. */
@@ -93,10 +116,16 @@ export type PreparedOrder = Pick<Order, "buyer" | "channel" | "store" | "deliver
   items: PreparedOrderItem[]
 }
 
+/** Resultado de validar los datos de compra antes de crear el pedido. */
 export type PrepareOrderResult =
   | { status: "ready"; order: PreparedOrder }
   | { status: "review"; message: string; validations: CartValidationResult[] }
   | { status: "rejected" | "error"; message: string }
+
+/** Pedido guardado localmente o motivo por el que no se pudo crear. */
+export type CreateOrderResult =
+  | { status: "created"; order: OrderDetails }
+  | { status: "rejected"; message: string }
 
 /**
  * Estado visible y acciones permitidas para consultar un pedido.
@@ -133,10 +162,13 @@ export type PayOrderResult =
 export type OrdersContextValue = {
   orders: OrderDetails[]
   storage_error: boolean
+  orders_read_status: OrdersReadStatus
+  has_pending_order_sync: boolean
   unsaved_order_ids: string[]
   retry_save_orders: () => boolean
+  retry_order_sync: () => void
   get_order: (order_id: string) => OrderDetails | undefined
-  create_order: (prepared_order: PreparedOrder) => OrderDetails | null
+  create_order: (prepared_order: PreparedOrder) => CreateOrderResult
   cancel_order: (order_id: string) => boolean
   pay_order: (order_id: string, card_data: CardPaymentData) => Promise<PayOrderResult>
 }

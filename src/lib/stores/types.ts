@@ -1,17 +1,22 @@
 import type { CartItem, CartValidationResult } from "@/lib/cart/types"
 
+/** Sucursal física con su identificador y provincia. */
 export type Store = {
   id: string
   province: string
   locale_name: string
 }
 
+/** Sucursales agrupadas por provincia. */
 export type StoreGroup = { province: string; stores: Store[] }
+
+/** Datos de una línea del carrito necesarios para consultar el stock por sede. */
 export type StoreCartProduct = Pick<CartItem, "id" | "product_id" | "sku" | "selected_size" | "quantity">
 
 /** Estado de una línea del carrito en una sede. */
 export type StoreCartLineStatus = "available" | "reduced" | "unavailable" | "unknown"
 
+/** Estado, stock y cantidad solicitada de una línea en una sede. */
 export type StoreCartLineAvailability = {
   item_id: string
   status: StoreCartLineStatus
@@ -30,6 +35,7 @@ export type StoreCartAvailability = {
   available_units: number
 }
 
+/** Ajuste o retiro de una línea del carrito al seleccionar una sede. */
 export type StoreCartChange = {
   item_id: string
   title: string
@@ -40,13 +46,17 @@ export type StoreCartChange = {
   reason: string
 }
 
+/** Aviso con los cambios del carrito y la sede asociada. */
 export type StoreCartNotice = { store: Store | null; changes: StoreCartChange[] }
+
+/** Validaciones, líneas retiradas y ajustes tras comprobar la disponibilidad. */
 export type StoreCartReconciliation = {
   validations: CartValidationResult[]
   removed_item_ids: string[]
   changes: StoreCartChange[]
 }
 
+/** Sede activa y acciones para seleccionarla y gestionar avisos del carrito. */
 export type StoresContextValue = {
   selected_store: Store | null
   get_selected_store: () => Store | null

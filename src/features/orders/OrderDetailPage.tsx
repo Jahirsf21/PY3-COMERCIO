@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/auth/authContext"
 export default function OrderDetailPage() {
   const { user } = useAuth()
   const { orderId } = useParams<{ orderId: string }>()
-  const { get_order, storage_error, unsaved_order_ids } = useOrders()
+  const { get_order, orders_read_status, storage_error, unsaved_order_ids } = useOrders()
   const order = orderId ? get_order(orderId) : undefined
   const has_unsaved_result = order !== undefined && unsaved_order_ids.includes(order.id)
   const availability = order ? get_order_availability(order, has_unsaved_result) : null
@@ -32,8 +32,11 @@ export default function OrderDetailPage() {
         <OrdersNotice />
         {!order || !availability ? (
           <section className="rounded-xl border border-input bg-card p-6">
-            <h1 className="text-2xl font-semibold">{storage_error ? "No pudimos recuperar este pedido" : "No encontramos este pedido"}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Revisa tus pedidos o verifica el enlace.</p>
+            <h1 className="text-2xl font-semibold">{orders_read_status === "loading" ? "Buscando el pedido…"
+              : storage_error || orders_read_status === "error" ? "No pudimos recuperar este pedido" : "No encontramos este pedido"}</h1>
+            {orders_read_status === "ready" && !storage_error && (
+              <p className="mt-2 text-sm text-muted-foreground">Revisa tus pedidos o verifica el enlace.</p>
+            )}
           </section>
         ) : availability.is_confirmed ? (
           <PaymentConfirmation order={order} show_order_link={false} />

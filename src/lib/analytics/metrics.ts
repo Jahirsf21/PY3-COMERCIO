@@ -1,7 +1,8 @@
-import { analytics_event_types, get_stored_events } from "@/lib/analytics/analytics"
+import { analytics_event_types, events_storage_key, get_stored_events } from "@/lib/analytics/analytics"
 import type { AnalyticsEvent, AnalyticsEventType, AnalyticsMetrics, BrowserAnalytics, DailyEventCount } from "@/lib/analytics/types"
+import { get_user_storage_key } from "@/lib/shared/utils"
 
-const events_storage_prefix = "space-shop-events:"
+const events_storage_prefix = get_user_storage_key(events_storage_key, "")
 
 /**
  * Calcula las métricas de Analytics a partir de los eventos registrados.

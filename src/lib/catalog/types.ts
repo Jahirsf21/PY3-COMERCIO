@@ -97,4 +97,5 @@ export type ProductSuggestionsResult = {
   has_error: boolean
 }
 
+/** Variante del catálogo con los metadatos de búsqueda de Algolia. */
 export type ProductHit = Hit<ProductRecord>

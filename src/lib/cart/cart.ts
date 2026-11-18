@@ -6,6 +6,8 @@ import { get_suggestions } from "@/lib/shared/suggestions"
 import { get_filter_value, get_product_quantity_limits, get_stored_json, get_user_storage_key, is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
 
+const cart_storage_key = "space-shop-cart"
+
 type QuantityProduct = Pick<CartProduct, "min_order_quantity" | "max_order_quantity" | "step_quantity">
 
 /**
@@ -62,7 +64,7 @@ export function parse_cart_data(cart_data: unknown): CartItem[] {
  */
 export function get_stored_cart(user_id: string | null): CartItem[] {
   if (!user_id) return []
-  return parse_cart_data(get_stored_json(get_user_storage_key("space-shop-cart", user_id)))
+  return parse_cart_data(get_stored_json(get_user_storage_key(cart_storage_key, user_id)))
 }
 
 /**
@@ -73,7 +75,7 @@ export function get_stored_cart(user_id: string | null): CartItem[] {
  */
 export function save_cart(user_id: string | null, cart: CartItem[]): boolean {
   if (!user_id) return true
-  return save_stored_list(get_user_storage_key("space-shop-cart", user_id), cart)
+  return save_stored_list(get_user_storage_key(cart_storage_key, user_id), cart)
 }
 
 /**

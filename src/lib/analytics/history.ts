@@ -1,6 +1,8 @@
 import type { RecentSearch, ViewedProduct } from "@/lib/analytics/types"
 import { get_stored_json, get_user_storage_key, is_nonempty_string, is_record, is_string_list, is_valid_date, save_stored_list } from "@/lib/shared/utils"
 
+const viewed_products_storage_key = "space-shop-viewed-products"
+const recent_searches_storage_key = "space-shop-recent-searches"
 const max_history_items = 10
 
 /**
@@ -50,7 +52,7 @@ export function parse_recent_searches(history_data: unknown): RecentSearch[] {
  * @returns Productos vistos, o un arreglo vacío si no se pueden recuperar.
  */
 export function get_stored_viewed_products(owner_id: string): ViewedProduct[] {
-  return parse_viewed_products(get_stored_json(get_user_storage_key("space-shop-viewed-products", owner_id)))
+  return parse_viewed_products(get_stored_json(get_user_storage_key(viewed_products_storage_key, owner_id)))
 }
 
 /**
@@ -60,7 +62,7 @@ export function get_stored_viewed_products(owner_id: string): ViewedProduct[] {
  * @returns true si se guardaron; false si el navegador rechaza la operación.
  */
 export function save_viewed_products(owner_id: string, viewed_products: ViewedProduct[]): boolean {
-  return save_stored_list(get_user_storage_key("space-shop-viewed-products", owner_id), viewed_products)
+  return save_stored_list(get_user_storage_key(viewed_products_storage_key, owner_id), viewed_products)
 }
 
 /**
@@ -69,7 +71,7 @@ export function save_viewed_products(owner_id: string, viewed_products: ViewedPr
  * @returns Búsquedas recientes, o un arreglo vacío si no se pueden recuperar.
  */
 export function get_stored_recent_searches(owner_id: string): RecentSearch[] {
-  return parse_recent_searches(get_stored_json(get_user_storage_key("space-shop-recent-searches", owner_id)))
+  return parse_recent_searches(get_stored_json(get_user_storage_key(recent_searches_storage_key, owner_id)))
 }
 
 /**
@@ -79,7 +81,7 @@ export function get_stored_recent_searches(owner_id: string): RecentSearch[] {
  * @returns true si se guardaron; false si el navegador rechaza la operación.
  */
 export function save_recent_searches(owner_id: string, recent_searches: RecentSearch[]): boolean {
-  return save_stored_list(get_user_storage_key("space-shop-recent-searches", owner_id), recent_searches)
+  return save_stored_list(get_user_storage_key(recent_searches_storage_key, owner_id), recent_searches)
 }
 
 /**
