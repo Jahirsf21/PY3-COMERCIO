@@ -9,13 +9,12 @@ import { useOrders } from "@/lib/orders/ordersContext"
 import { cn, format_price } from "@/lib/shared/utils"
 
 /**
- * Lista los pedidos accesibles para la sesión, ordenados del consecutivo más reciente al más antiguo.
+ * Muestra los pedidos accesibles del más reciente al más antiguo.
  * Permite consultar sus detalles aunque el carrito esté vacío.
  * @returns Listado de pedidos o estado vacío si todavía no se han generado compras.
  */
 export default function OrdersPage() {
   const { orders, storage_error, unsaved_order_ids } = useOrders()
-  const sorted_orders = orders.toSorted((first, second) => second.order_number - first.order_number)
 
   return (
     <div className="min-h-dvh bg-background">
@@ -26,7 +25,7 @@ export default function OrdersPage() {
           <p className="mt-2 text-sm text-muted-foreground">Consulta el estado de tus compras.</p>
         </div>
         <OrdersNotice />
-        {sorted_orders.length === 0 ? (
+        {orders.length === 0 ? (
           !storage_error && (
             <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border border-input px-6 py-12 text-center">
               <ClipboardListIcon aria-hidden="true" className="mb-4 size-10 text-muted-foreground" />
@@ -38,7 +37,7 @@ export default function OrdersPage() {
           )
         ) : (
           <ul aria-label="Pedidos generados" className="space-y-4">
-            {sorted_orders.map((order) => (
+            {orders.map((order) => (
               <li key={order.id}>
                 <article aria-labelledby={`order-${order.id}-title`} className="min-w-0 rounded-xl border border-input bg-card p-5 sm:p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">

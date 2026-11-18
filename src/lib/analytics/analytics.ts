@@ -55,7 +55,8 @@ function is_valid_payload(type: AnalyticsEventType, payload: Record<string, unkn
   if (type === "checkout_start") {
     return is_positive_integer(payload.items_count) && is_positive_integer(payload.total_units) && is_valid_price(payload.total) && is_valid_currency(payload.currency)
   }
-  return is_nonempty_string(payload.order_id) && is_positive_integer(payload.order_number) && is_positive_integer(payload.items_count) &&
+  return is_nonempty_string(payload.order_id) && (is_nonempty_string(payload.order_number) || is_positive_integer(payload.order_number)) &&
+    is_positive_integer(payload.items_count) &&
     is_valid_price(payload.total) && is_valid_currency(payload.currency)
 }
 
