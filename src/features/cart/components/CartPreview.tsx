@@ -3,7 +3,7 @@ import { ShoppingCartIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { get_item_subtotal } from "@/lib/cart/cart"
+import { get_cart_conditions_text, get_item_subtotal } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import { CartStatus } from "@/features/cart/components/CartStatus"
 import { format_price } from "@/lib/shared/utils"
@@ -59,6 +59,9 @@ export function CartPreview({ onClose }: { onClose: () => void }) {
                     {item.title}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">Talla: {item.selected_size}</p>
+                  {get_cart_conditions_text(item_validation[item.id]?.conditions ?? null) && (
+                    <p className="mt-1 text-xs text-muted-foreground">{get_cart_conditions_text(item_validation[item.id]?.conditions ?? null)}</p>
+                  )}
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <span className="text-xs text-muted-foreground">Cantidad: {item.quantity}</span>
                     <span className="break-words text-sm font-semibold">

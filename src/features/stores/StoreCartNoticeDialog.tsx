@@ -20,7 +20,8 @@ export function StoreCartNoticeDialog() {
               <div className="min-w-0 break-words">
                 <p className="font-medium">{change.title} · Talla {change.selected_size}</p>
                 <p className="mt-1 text-muted-foreground">
-                  {change.quantity === 0 ? "No hay stock disponible para este producto." : `Cantidad ajustada de ${change.previous_quantity} a ${change.quantity}.`}
+                  {change.reason}{" "}
+                  {change.quantity === 0 ? "Lo quitamos del carrito." : `Cantidad ajustada de ${change.previous_quantity} a ${change.quantity}.`}
                 </p>
               </div>
             </li>

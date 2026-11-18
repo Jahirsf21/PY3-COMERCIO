@@ -46,6 +46,9 @@ export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOr
     if (validations.some((validation) => validation.status === "error")) {
       return { status: "error", message: "No pudimos comprobar todos los productos de la tienda. Intenta nuevamente." }
     }
+    if (validations.some((validation) => validation.status === "invalid_quantity")) {
+      return { status: "review", message: "Algunos productos no cumplen las condiciones de compra. Revisa las cantidades en el carrito antes de generar el pedido.", validations }
+    }
     if (validations.some((validation) => validation.status !== "valid" ||
       validation.item.unit_price !== validation.original_item.unit_price || validation.item.currency !== validation.original_item.currency)) {
       return { status: "review", message: "El stock o los precios cambiaron. Actualiza y revisa el carrito antes de generar el pedido.", validations }

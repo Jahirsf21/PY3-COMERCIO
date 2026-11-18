@@ -43,6 +43,15 @@ export type CartQuantityLimits = {
 }
 
 /**
+ * Condiciones de compra de una variante según el índice del canal, sin recortar por el stock
+ */
+export type CartQuantityConditions = {
+  min_order_quantity: number
+  max_order_quantity: number
+  step_quantity: number
+}
+
+/**
  * Líneas de una página del carrito y datos de paginación
  */
 export type CartPagination = {
@@ -68,6 +77,7 @@ export type CartSuggestionsResult = {
 export type CartItemValidation = {
   status: "pending" | "valid" | "unavailable" | "invalid_quantity" | "error"
   limits: CartQuantityLimits | null
+  conditions: CartQuantityConditions | null
   message?: string
 }
 
