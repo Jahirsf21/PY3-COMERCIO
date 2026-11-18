@@ -10,6 +10,8 @@ import { ShopHeader } from "@/components/shop-header"
 /**
  * Catálogo de productos del canal de venta activo, con búsqueda, filtros y resultados.
  * Al cambiar de canal se reinicia la búsqueda para consultar los índices del nuevo canal.
+ * Los filtros se muestran dos veces (columna de escritorio y panel móvil); preserveSharedStateOnUnmount
+ * evita que se pierdan al cerrar el panel móvil, que desmonta su copia de los filtros.
  * @returns Página del catálogo.
  */
 export default function Catalog() {
@@ -20,6 +22,7 @@ export default function Catalog() {
       indexName={get_product_indices(channel).main}
       searchClient={search_client}
       routing
+      future={{ preserveSharedStateOnUnmount: true }}
     >
       <div className="flex h-dvh flex-col">
         <ShopHeader />

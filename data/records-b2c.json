@@ -53,6 +53,11 @@
     ],
     "rating": 3.6,
     "price": 72236,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2026-10-01T00:00:00-06:00",
+      "ends_at": "2026-10-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -312,6 +317,11 @@
     ],
     "rating": 4.3,
     "price": 72236,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2026-10-01T00:00:00-06:00",
+      "ends_at": "2026-10-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -563,6 +573,11 @@
     ],
     "rating": 5,
     "price": 72236,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2026-10-01T00:00:00-06:00",
+      "ends_at": "2026-10-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -697,6 +712,11 @@
     ],
     "rating": 4.2,
     "price": 72236,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2026-10-01T00:00:00-06:00",
+      "ends_at": "2026-10-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -804,6 +824,11 @@
     ],
     "rating": 4.9,
     "price": 72236,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2026-10-01T00:00:00-06:00",
+      "ends_at": "2026-10-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -1075,6 +1100,11 @@
     ],
     "rating": 4.1,
     "price": 72236,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2026-10-01T00:00:00-06:00",
+      "ends_at": "2026-10-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -1248,6 +1278,11 @@
     ],
     "rating": 4.8,
     "price": 67693,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -1433,6 +1468,11 @@
     ],
     "rating": 4,
     "price": 67693,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -1629,6 +1669,11 @@
     ],
     "rating": 4.7,
     "price": 67693,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -1783,6 +1828,11 @@
     ],
     "rating": 3.9,
     "price": 67693,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -1920,6 +1970,11 @@
     ],
     "rating": 4.6,
     "price": 67693,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -2177,6 +2232,11 @@
     ],
     "rating": 3.8,
     "price": 67693,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -2593,6 +2653,11 @@
     ],
     "rating": 3.7,
     "price": 36345,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -2839,6 +2904,11 @@
     ],
     "rating": 4.4,
     "price": 36345,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -3142,6 +3212,11 @@
     ],
     "rating": 3.6,
     "price": 36345,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -3388,6 +3463,11 @@
     ],
     "rating": 4.3,
     "price": 36345,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -3562,6 +3642,11 @@
     ],
     "rating": 5,
     "price": 36345,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -3697,6 +3782,11 @@
     ],
     "rating": 4.2,
     "price": 36345,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -15021,6 +15111,11 @@
     ],
     "rating": 3.8,
     "price": 110853,
+    "discount": {
+      "percentage": 10,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -15280,6 +15375,11 @@
     ],
     "rating": 4.5,
     "price": 110853,
+    "discount": {
+      "percentage": 10,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -15458,6 +15558,11 @@
     ],
     "rating": 3.7,
     "price": 110853,
+    "discount": {
+      "percentage": 10,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -23485,6 +23590,11 @@
     ],
     "rating": 3.6,
     "price": 40850,
+    "discount": {
+      "percentage": 10,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -24271,6 +24381,11 @@
     ],
     "rating": 4.7,
     "price": 27220,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -25558,6 +25673,11 @@
     ],
     "rating": 4.9,
     "price": 45389,
+    "discount": {
+      "percentage": 20,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
@@ -26704,6 +26824,11 @@
     ],
     "rating": 4,
     "price": 120000,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2027-01-01T00:00:00-06:00",
+      "ends_at": "2027-01-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -26888,6 +27013,11 @@
     ],
     "rating": 4.7,
     "price": 120000,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2027-01-01T00:00:00-06:00",
+      "ends_at": "2027-01-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -27040,6 +27170,11 @@
     ],
     "rating": 3.9,
     "price": 120000,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2027-01-01T00:00:00-06:00",
+      "ends_at": "2027-01-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -27236,6 +27371,11 @@
     ],
     "rating": 4.6,
     "price": 120000,
+    "discount": {
+      "percentage": 30,
+      "starts_at": "2027-01-01T00:00:00-06:00",
+      "ends_at": "2027-01-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -27446,6 +27586,11 @@
     ],
     "rating": 3.8,
     "price": 85000,
+    "discount": {
+      "percentage": 25,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -27701,6 +27846,11 @@
     ],
     "rating": 4.5,
     "price": 85000,
+    "discount": {
+      "percentage": 25,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -29807,6 +29957,11 @@
     ],
     "rating": 4.7,
     "price": 83969,
+    "discount": {
+      "percentage": 10,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -31854,6 +32009,11 @@
     ],
     "rating": 4.9,
     "price": 45389,
+    "discount": {
+      "percentage": 15,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 5,
     "step_quantity": 1,
@@ -33936,6 +34096,11 @@
     ],
     "rating": 4.2,
     "price": 19081,
+    "discount": {
+      "percentage": 25,
+      "starts_at": "2026-11-01T00:00:00-06:00",
+      "ends_at": "2026-12-31T23:59:59-06:00"
+    },
     "min_order_quantity": 1,
     "max_order_quantity": 10,
     "step_quantity": 1,
