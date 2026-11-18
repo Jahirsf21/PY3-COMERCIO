@@ -177,7 +177,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const item_validation: Record<string, CartItemValidation> = Object.fromEntries(cart.map((item) => {
     const result = validated_store_id === (selected_store?.id ?? null) ? validations.find((validation) => validation.item === item) : undefined
-    return [item.id, result ?? { status: "pending", limits: null, conditions: null }]
+    return [item.id, result ?? { status: "pending", limits: null, conditions: null, available_quantity: null }]
   }))
   const is_validating = pending_operations > 0 || Object.values(item_validation).some((result) => result.status === "pending")
   const can_checkout = cart.length > 0 && !is_validating && Object.values(item_validation).every((result) => result.status === "valid") &&

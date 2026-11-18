@@ -78,6 +78,7 @@ export type CartItemValidation = {
   status: "pending" | "valid" | "unavailable" | "invalid_quantity" | "error"
   limits: CartQuantityLimits | null
   conditions: CartQuantityConditions | null
+  available_quantity: number | null
   message?: string
 }
 

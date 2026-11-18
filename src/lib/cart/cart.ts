@@ -82,7 +82,7 @@ export function save_cart(user_id: string | null, cart: CartItem[]): boolean {
  * @returns Resultado con estado error, sin límites y con un mensaje para reintentar.
  */
 export function get_cart_validation_error(item: CartItem): CartValidationResult {
-  return { original_item: item, item, status: "error", limits: null, conditions: null, message: "No pudimos actualizar este producto. Intenta de nuevo." }
+  return { original_item: item, item, status: "error", limits: null, conditions: null, available_quantity: null, message: "No pudimos actualizar este producto. Intenta de nuevo." }
 }
 
 /**
@@ -102,7 +102,7 @@ export function get_cart_validation_error(item: CartItem): CartValidationResult 
  */
 export function validate_cart_item(item: CartItem, product: ProductRecord | undefined, available_quantity: number): CartValidationResult {
   if (!product || product.product_id !== item.product_id || product.sku !== item.sku) {
-    return { original_item: item, item, status: "unavailable", limits: null, conditions: null, message: "Este producto ya no está disponible. Puedes quitarlo del carrito." }
+    return { original_item: item, item, status: "unavailable", limits: null, conditions: null, available_quantity: 0, message: "Este producto ya no está disponible. Puedes quitarlo del carrito." }
   }
   if (!is_nonempty_string(product.title) || !is_valid_image(product.image) || !is_valid_currency(product.currency) ||
     !is_valid_price(product.price) || typeof product.on_discount !== "boolean") return get_cart_validation_error(item)
@@ -130,13 +130,13 @@ export function validate_cart_item(item: CartItem, product: ProductRecord | unde
     item.unit_price === updated_item.unit_price && item.image.url === updated_item.image.url && item.image.alt === updated_item.image.alt
   const current_item = has_same_details ? item : updated_item
   if (limits.max_quantity < limits.min_quantity) {
-    return { original_item: item, item: current_item, status: "unavailable", limits, conditions, message: get_cart_unavailable_message(conditions, available_quantity) }
+    return { original_item: item, item: current_item, status: "unavailable", limits, conditions, available_quantity, message: get_cart_unavailable_message(conditions, available_quantity) }
   }
   if (!is_valid_cart_quantity(item.quantity, limits)) {
-    return { original_item: item, item: current_item, status: "invalid_quantity", limits, conditions, message: get_cart_quantity_issue_message(item.quantity, limits, conditions, available_quantity) }
+    return { original_item: item, item: current_item, status: "invalid_quantity", limits, conditions, available_quantity, message: get_cart_quantity_issue_message(item.quantity, limits, conditions, available_quantity) }
   }
   if (!is_valid_price(updated_item.unit_price, updated_item.quantity)) return get_cart_validation_error(item)
-  return { original_item: item, item: current_item, status: "valid", limits, conditions }
+  return { original_item: item, item: current_item, status: "valid", limits, conditions, available_quantity }
 }
 
 /**
