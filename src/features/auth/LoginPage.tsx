@@ -3,13 +3,13 @@ import type { SubmitEvent } from "react"
 import { Link, Navigate, useLocation } from "react-router-dom"
 import type { To } from "react-router-dom"
 import { ArrowRightIcon, LoaderCircleIcon, LockIcon, UserIcon } from "lucide-react"
+import { NoticeDialog } from "@/components/notice-dialog"
 import { Button } from "@/components/ui/button"
 import { FieldGroup } from "@/components/ui/field"
 import { ShopFooter } from "@/components/shop-footer"
 import { ShopHeader } from "@/components/shop-header"
 import { LoginBackground } from "@/features/auth/components/LoginBackground"
 import { LoginInputField } from "@/features/auth/components/LoginInputField"
-import { LoginNoticeDialog } from "@/features/auth/components/LoginNoticeDialog"
 import { validate_login_credentials } from "@/lib/auth/auth"
 import { useAuth } from "@/lib/auth/authContext"
 import type { LoginCredentials, LoginResult } from "@/lib/auth/types"
@@ -174,8 +174,9 @@ export default function LoginPage() {
         </section>
       </main>
       <ShopFooter compact />
-      <LoginNoticeDialog
+      <NoticeDialog
         open={notice !== null}
+        context_label="Inicio de sesión"
         title={notice?.title ?? ""}
         message={notice?.message ?? ""}
         on_open_change={change_notice_open}

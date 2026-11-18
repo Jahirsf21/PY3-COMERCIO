@@ -1,12 +1,12 @@
 import { useState } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
+import { NoticeDialog } from "@/components/notice-dialog"
 import { Button } from "@/components/ui/button"
 import { ShopHeader } from "@/components/shop-header"
 import { OrderProducts } from "@/features/orders/components/OrderProducts"
 import { OrdersNotice } from "@/features/orders/components/OrdersNotice"
 import { PaymentForm } from "@/features/payments/components/PaymentForm"
 import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrderSummary"
-import { PaymentNoticeDialog } from "@/features/payments/components/PaymentNoticeDialog"
 import { get_order_payment_block } from "@/lib/orders/orders"
 import { useOrders } from "@/lib/orders/ordersContext"
 import type { PayOrderResult } from "@/lib/orders/types"
@@ -132,10 +132,12 @@ export default function PaymentPage() {
           </>
         )}
       </main>
-      <PaymentNoticeDialog
+      <NoticeDialog
         open={current_notice !== null && dismissed_notice_key !== current_notice.key}
+        context_label="Pago de tu orden"
         title={current_notice?.title ?? "Aviso del pago"}
         message={current_notice?.message ?? ""}
+        tone={has_unsaved_result ? "warning" : "error"}
         on_open_change={change_notice_open}
         on_retry={has_unsaved_result ? retry_save_orders : undefined}
       />

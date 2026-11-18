@@ -1,9 +1,9 @@
-import type { Company } from "@/lib/auth/types"
+import type { AccountIdentity, Company } from "@/lib/auth/types"
 import type { SalesChannel } from "@/lib/channel/types"
 import type { ProductImage } from "@/lib/catalog/types"
 import type { CartItem, CartQuantityConditions, CartValidationResult } from "@/lib/cart/types"
 import type { BuyerInfo, CheckoutFormData, DeliveryInfo, DeliveryMethod, TermsAcceptance } from "@/lib/checkout/types"
-import type { CardPaymentData, Payment } from "@/lib/payments/types"
+import type { CardPaymentData, Payment, PaymentStatus } from "@/lib/payments/types"
 import type { Store } from "@/lib/stores/types"
 
 /**
@@ -85,6 +85,35 @@ export type OrderIndexRecord = Omit<OrderDetails, "id" | "items" | "payment"> & 
   created_at_timestamp: number
   items: Omit<OrderItem, "order_id">[]
   payment: Omit<Payment, "order_id"> | null
+}
+
+/** Parámetros de búsqueda de órdenes. */
+export type AdminOrderSearchInput = {
+  query?: string
+  role?: OrderCustomer["role"]
+  store_id?: Store["id"]
+  status?: OrderStatus
+  payment_status?: PaymentStatus
+  page?: number
+}
+
+/** Resumen de una orden para el panel. */
+export type AdminOrderSummary = Pick<Order, "id" | "order_number" | "created_at" | "user_id" | "role" | "store" | "total" | "currency" | "status"> & {
+  account: AccountIdentity | null
+  recipient_name: string
+  company_name: string | null
+  payment_status: PaymentStatus | null
+}
+
+/** Orden con la cuenta que la realizó. */
+export type AdminOrderDetail = OrderDetails & { account: AccountIdentity | null }
+
+/** Resultados paginados de la búsqueda. */
+export type AdminOrderSearchResult = {
+  orders: AdminOrderSummary[]
+  current_page: number
+  total_pages: number
+  total_orders: number
 }
 
 /** Copia local y pedidos que aún deben publicarse. */

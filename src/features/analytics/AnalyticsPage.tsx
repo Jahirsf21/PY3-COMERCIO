@@ -48,7 +48,7 @@ function AnalyticsSection({ id, title, description, summary, events }: Analytics
 }
 
 /**
- * Pantalla de actividad ("Tu actividad" para clientes, "Métricas de uso" para el ADMIN) con las métricas del usuario activo, calculadas con sus eventos registrados.
+ * Muestra «Tu actividad» a clientes y «Métricas del sitio» al ADMIN.
  * El ADMIN ve además el total de todos los usuarios y sesiones anónimas del navegador.
  * Sin sesión redirige al inicio de sesión, que vuelve a esta pantalla al iniciarla.
  * @returns Pantalla de métricas de uso, o la redirección al inicio de sesión.
@@ -67,10 +67,10 @@ export default function AnalyticsPage() {
       <ShopHeader sticky />
       <main className="mx-auto w-full max-w-6xl space-y-10 px-4 py-8 lg:px-6">
         <div>
-          <h1 className="text-2xl font-semibold">{is_admin ? "Métricas de uso" : "Tu actividad"}</h1>
+          <h1 className="text-2xl font-semibold">{is_admin ? "Métricas del sitio" : "Tu actividad"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {is_admin
-              ? "Resumen de tu actividad y de la de todos los usuarios de la tienda: productos vistos, búsquedas, productos agregados al carrito y compras."
+              ? "Resumen de la actividad registrada en este navegador: productos vistos, búsquedas, productos agregados al carrito y compras."
               : "Resumen de tu actividad en la tienda: productos que viste, búsquedas, productos agregados al carrito y compras."}
           </p>
         </div>

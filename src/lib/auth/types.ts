@@ -34,6 +34,9 @@ export type User = {
   company: Company | null
 }
 
+/** Nombre y usuario de una cuenta. */
+export type AccountIdentity = Pick<User, "username" | "full_name">
+
 /**
  * Credenciales ingresadas en el formulario de inicio de sesión.
  */

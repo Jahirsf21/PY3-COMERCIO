@@ -127,4 +127,7 @@
   html {
     @apply font-sans;
     }
+  html:has([data-admin-header]) {
+    scrollbar-gutter: stable;
+    }
 }

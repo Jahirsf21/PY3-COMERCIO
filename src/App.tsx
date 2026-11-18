@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import Catalog from "@/features/catalog/Catalog"
 import CartPage from "@/features/cart/CartPage"
@@ -9,6 +10,8 @@ import ProductDetailPage from "@/features/product-detail/ProductDetailPage"
 import PoliciesPage from "@/features/policies/PoliciesPage"
 import LoginPage from "@/features/auth/LoginPage"
 import AnalyticsPage from "@/features/analytics/AnalyticsPage"
+import AdminOrderDetailPage from "@/features/admin/AdminOrderDetailPage"
+import AdminOrdersPage from "@/features/admin/AdminOrdersPage"
 import { useAuth } from "@/lib/auth/authContext"
 import { useCart } from "@/lib/cart/cartContext"
 import { StoreCartNoticeDialog } from "@/features/stores/StoreCartNoticeDialog"
@@ -21,9 +24,14 @@ function App() {
   const { user } = useAuth()
   const location = useLocation()
   const { pathname } = location
-  const purchase_redirect = user?.role === "ADMIN"
+  const is_admin = user?.role === "ADMIN"
+  const purchase_redirect = is_admin
     ? <Navigate to="/" replace />
     : null
+
+  useLayoutEffect(() => {
+    if (is_admin) window.scrollTo(0, 0)
+  }, [is_admin, pathname])
 
   return (
     <>
@@ -35,8 +43,12 @@ function App() {
           element={
             user?.role !== "ADMIN"
               ? <Navigate to="/" replace />
-              : <></>
+              : <AdminOrdersPage key={user.id} user={user} />
           }
+        />
+        <Route
+          path="/admin/pedido/:orderId"
+          element={user?.role === "ADMIN" ? <AdminOrderDetailPage key={user.id} user={user} /> : <Navigate to="/" replace />}
         />
         <Route path="/carrito" element={purchase_redirect ?? <CartPage />} />
         <Route
@@ -44,7 +56,12 @@ function App() {
           element={purchase_redirect ?? (cart.length === 0 ? <Navigate to="/carrito" replace /> : <Checkout />)}
         />
         <Route path="/pedido/:orderId/pago" element={purchase_redirect ?? <PaymentPage />} />
-        <Route path="/pedidos" element={!user ? <Navigate to="/login" replace state={{ from: location }} /> : <OrdersPage />} />
+        <Route
+          path="/pedidos"
+          element={!user ? <Navigate to="/login" replace state={{ from: location }} />
+            : user.role === "ADMIN" ? <Navigate to="/admin" replace />
+              : <OrdersPage />}
+        />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/politicas-y-ayuda" element={<PoliciesPage />} />
         <Route path="/pedido/:orderId" element={<OrderDetailPage />} />

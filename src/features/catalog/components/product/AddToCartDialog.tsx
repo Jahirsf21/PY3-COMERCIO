@@ -118,7 +118,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
           <ShoppingCartIcon aria-hidden="true" />
           <span>Agregar<span className="hidden sm:inline"> al carrito</span></span>
         </DialogTrigger>
-        <DialogContent showCloseButton={false} className="flex max-h-[90dvh] flex-col overflow-hidden p-5 sm:max-w-lg sm:p-6 motion-reduce:animate-none">
+        <DialogContent showCloseButton={false} className="flex max-h-[90dvh] flex-col overflow-hidden p-5 motion-reduce:animate-none sm:max-w-xl sm:p-6 md:max-w-2xl lg:max-w-3xl">
           <DialogHeader className="shrink-0 pr-10">
             <DialogTitle>Agregar al carrito</DialogTitle>
             <DialogDescription>Elige el color y la talla del producto.</DialogDescription>

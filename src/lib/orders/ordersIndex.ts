@@ -1,6 +1,8 @@
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
+import { get_indexed_account_identities } from "@/lib/auth/accountIndex"
+import type { User } from "@/lib/auth/types"
 import { parse_orders_data } from "@/lib/orders/orders"
-import type { OrderDetails, OrderIndexRecord } from "@/lib/orders/types"
+import type { AdminOrderDetail, OrderDetails, OrderIndexRecord } from "@/lib/orders/types"
 import { get_filter_value, is_non_negative_integer, is_record } from "@/lib/shared/utils"
 
 const max_order_record_bytes = 10_000
@@ -104,9 +106,19 @@ export async function get_indexed_orders(owner_id: string, is_admin: boolean): P
     page++
   } while (page < pages)
 
+  return parse_indexed_orders(records, is_admin ? undefined : owner_id)
+}
+
+/**
+ * Restaura el identificador del pedido antes de validar sus datos.
+ * @param records Registros sin validar.
+ * @param owner_id Propietario que debe coincidir, si corresponde.
+ * @returns Pedidos válidos del índice.
+ */
+function parse_indexed_orders(records: unknown[], owner_id?: string): OrderDetails[] {
   return parse_orders_data(records.flatMap((record) => {
     if (!is_record(record) || typeof record.objectID !== "string" || !Array.isArray(record.items) ||
-      (!is_admin && record.user_id !== owner_id)) return []
+      (owner_id !== undefined && record.user_id !== owner_id)) return []
     const id = record.objectID
     return [{
       ...record,
@@ -115,4 +127,31 @@ export async function get_indexed_orders(owner_id: string, is_admin: boolean): P
       payment: is_record(record.payment) ? { ...record.payment, order_id: id } : record.payment,
     }]
   }))
+}
+
+/**
+ * Consulta desde el panel el detalle de una orden registrada por su UUID.
+ * @param user Usuario de la sesión simulada; debe ser ADMIN.
+ * @param order_id UUID del pedido.
+ * @returns Orden validada, o undefined si no está disponible.
+ * @throws Si no hay acceso o no se puede consultar el índice.
+ */
+export async function get_indexed_admin_order(user: User | null, order_id: string): Promise<AdminOrderDetail | undefined> {
+  if (user?.role !== "ADMIN") throw new Error("Solo el administrador puede consultar este detalle.")
+  if (!order_id) return undefined
+  const indexName = algolia_indices.orders
+  if (!indexName) throw new Error("La consulta de pedidos no está configurada.")
+
+  const { data: { results: [result] } } = await search_client.searchWithHTTPInfo<OrderIndexRecord>({
+    requests: [{
+      indexName, query: "", filters: `objectID:${get_filter_value(order_id)}`, hitsPerPage: 1, distinct: false,
+      analytics: false, attributesToHighlight: [], attributesToSnippet: [],
+    }],
+  })
+  if (!result || !("hits" in result) || !Array.isArray(result.hits)) throw new Error("No pudimos consultar el pedido.")
+  const matching = result.hits.filter((record) => is_record(record) && record.objectID === order_id)
+  const order = parse_indexed_orders(matching)[0]
+  if (!order) return undefined
+  const accounts = await get_indexed_account_identities(user, order.role === "GUEST" ? [] : [order.user_id])
+  return { ...order, account: accounts.get(order.user_id) ?? null }
 }
