@@ -4,6 +4,8 @@ import { RemoveCartItemDialog } from "@/features/cart/components/RemoveCartItemD
 import { get_cart_conditions_text, get_item_subtotal } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import type { CartItem } from "@/lib/cart/types"
+import { get_available_quantity_text } from "@/lib/stores/stores"
+import { useStores } from "@/lib/stores/storesContext"
 import { format_price } from "@/lib/shared/utils"
 
 type CartItemCardProps = {
@@ -18,6 +20,7 @@ type CartItemCardProps = {
  */
 export function CartItemCard({ item }: CartItemCardProps) {
   const { item_validation } = useCart()
+  const { selected_store } = useStores()
   const validation = item_validation[item.id]
   const confirmed = validation?.status === "valid"
   const conditionsText = get_cart_conditions_text(validation?.conditions ?? null)
@@ -36,6 +39,9 @@ export function CartItemCard({ item }: CartItemCardProps) {
             </Link>
             <p className="mt-2 text-sm text-muted-foreground">Talla: {item.selected_size}</p>
             {conditionsText && <p className="mt-1 text-xs text-muted-foreground">{conditionsText}</p>}
+            {typeof validation?.available_quantity === "number" && validation.status !== "error" && (
+              <p className="mt-1 text-xs text-muted-foreground">{get_available_quantity_text(validation.available_quantity, selected_store)}</p>
+            )}
           </div>
           <RemoveCartItemDialog item={item} />
         </div>

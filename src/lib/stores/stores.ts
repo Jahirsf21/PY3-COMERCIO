@@ -137,6 +137,18 @@ export function get_store_availability_text(availability: StoreCartAvailability)
 }
 
 /**
+ * Describe las unidades disponibles de una talla en una sede.
+ * @param available_quantity Unidades disponibles.
+ * @param store Sede elegida, o null si no hay.
+ * @returns Texto de disponibilidad.
+ */
+export function get_available_quantity_text(available_quantity: number, store: Store | null): string {
+  const place = store ? store.locale_name : "la tienda con más unidades"
+  if (available_quantity <= 0) return `Sin unidades en ${place}`
+  return `Disponible: ${available_quantity} ${available_quantity === 1 ? "unidad" : "unidades"} en ${place}`
+}
+
+/**
  * Recupera el identificador de la tienda guardada y lo comprueba contra el registro de locales.
  * @returns Tienda registrada, o null si no existe una selección válida o falla la lectura.
  */

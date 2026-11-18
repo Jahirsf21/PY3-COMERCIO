@@ -14,6 +14,7 @@ import type { ProductHit, VariantsResult } from "@/lib/catalog/types"
 import { cn, format_price } from "@/lib/shared/utils"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
+import { get_available_quantity_text } from "@/lib/stores/stores"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const { user } = useAuth()
@@ -238,7 +239,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                     <p className="text-sm text-muted-foreground">
                       {!selectedSize
                         ? sizes.length > 0 ? "Selecciona una talla para agregar el producto." : "Este color no tiene tallas disponibles."
-                        : limitMessage ?? (quantityToAdd > 1 ? `Se añadirán ${quantityToAdd} unidades.` : "Disponible")}
+                        : limitMessage ?? `${get_available_quantity_text(availableQuantity ?? 0, selected_store)}${quantityToAdd > 1 ? ` · Se añadirán ${quantityToAdd} unidades.` : ""}`}
                     </p>
                   )}
                 </div>

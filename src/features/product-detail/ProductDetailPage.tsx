@@ -11,6 +11,7 @@ import { ShopHeader } from "@/components/shop-header"
 import { format_price } from "@/lib/shared/utils"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
+import { get_available_quantity_text } from "@/lib/stores/stores"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
 function ProductDetailSkeleton() {
@@ -297,7 +298,7 @@ export default function ProductDetailPage() {
                   {!selectedSize
                     ? "La disponibilidad depende del color y la talla."
                     : isAvailable
-                      ? `${availableQuantity} unidades disponibles`
+                      ? get_available_quantity_text(availableQuantity ?? 0, selected_store)
                       : "Prueba con otra talla o color."}
                 </p>
               </div>
