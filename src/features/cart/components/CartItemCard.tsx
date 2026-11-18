@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { CartQuantityStepper } from "@/features/cart/components/CartQuantityStepper"
 import { RemoveCartItemDialog } from "@/features/cart/components/RemoveCartItemDialog"
-import { get_item_subtotal } from "@/lib/cart/cart"
+import { get_cart_conditions_text, get_item_subtotal } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import type { CartItem } from "@/lib/cart/types"
 import { format_price } from "@/lib/shared/utils"
@@ -20,6 +20,7 @@ export function CartItemCard({ item }: CartItemCardProps) {
   const { item_validation } = useCart()
   const validation = item_validation[item.id]
   const confirmed = validation?.status === "valid"
+  const conditionsText = get_cart_conditions_text(validation?.conditions ?? null)
   const priceConfirmed = confirmed || validation?.status === "invalid_quantity" || (validation?.status === "unavailable" && validation.limits !== null)
   return (
     <li className="@container min-w-0 rounded-xl border border-input bg-card p-4">
@@ -34,6 +35,7 @@ export function CartItemCard({ item }: CartItemCardProps) {
               {item.title}
             </Link>
             <p className="mt-2 text-sm text-muted-foreground">Talla: {item.selected_size}</p>
+            {conditionsText && <p className="mt-1 text-xs text-muted-foreground">{conditionsText}</p>}
           </div>
           <RemoveCartItemDialog item={item} />
         </div>

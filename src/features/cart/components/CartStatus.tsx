@@ -1,5 +1,6 @@
 import { XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { get_cart_review_message } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import { cn } from "@/lib/shared/utils"
 
@@ -14,8 +15,9 @@ type CartStatusProps = {
  * @returns Avisos del carrito, o null si no hay avisos.
  */
 export function CartStatus({ className }: CartStatusProps) {
-  const { cart, storage_error, notice, dismiss_notice, is_validating, can_checkout, revalidate_cart } = useCart()
+  const { cart, storage_error, notice, dismiss_notice, is_validating, can_checkout, revalidate_cart, item_validation } = useCart()
   const needsReview = cart.length > 0 && !can_checkout && !is_validating
+  const reviewMessage = get_cart_review_message(Object.values(item_validation)) ?? "Revisa los productos señalados antes de continuar."
   const mixedCurrencies = new Set(cart.map((item) => item.currency)).size > 1
   if (!storage_error && !notice && !is_validating && !needsReview) return null
 
@@ -33,7 +35,7 @@ export function CartStatus({ className }: CartStatusProps) {
       {is_validating && <p role="status">Comprobando tu carrito…</p>}
       {needsReview && (
         <div className="space-y-2">
-          <p role="status">{mixedCurrencies ? "Para continuar, elige productos en una misma moneda." : "Revisa los productos señalados antes de continuar."}</p>
+          <p role="status">{mixedCurrencies ? "Para continuar, elige productos en una misma moneda." : reviewMessage}</p>
           <Button type="button" variant="outline" size="sm" className="cursor-pointer" onClick={revalidate_cart}>Actualizar carrito</Button>
         </div>
       )}

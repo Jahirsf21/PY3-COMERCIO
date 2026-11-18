@@ -1,4 +1,6 @@
+import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
+import { get_cart_review_message } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import type { DeliveryMethod } from "@/lib/checkout/types"
 import { format_price } from "@/lib/shared/utils"
@@ -11,7 +13,8 @@ type CheckoutOrderSummaryProps = {
 }
 
 export function CheckoutOrderSummary({ delivery_method, is_store_ready, is_assigning_store, is_generating }: CheckoutOrderSummaryProps) {
-  const { cart, subtotal, shipping: cart_shipping, tax, can_checkout } = useCart()
+  const { cart, subtotal, shipping: cart_shipping, tax, can_checkout, is_validating, item_validation } = useCart()
+  const review_message = cart.length > 0 && !can_checkout && !is_validating ? get_cart_review_message(Object.values(item_validation)) : null
   const currency = cart[0]?.currency ?? "CRC"
   const shipping = delivery_method === "PICKUP" ? 0 : cart_shipping
   const total = subtotal + tax + shipping
@@ -41,6 +44,12 @@ export function CheckoutOrderSummary({ delivery_method, is_store_ready, is_assig
       <Button type="submit" form="checkout-form" disabled={!can_checkout || is_assigning_store || is_generating || (delivery_method === "SHIPPING" && !is_store_ready)} size="lg" className="mt-5 h-11 w-full cursor-pointer">
         {is_generating ? "Validando pedido…" : "Generar orden de compra"}
       </Button>
+      {review_message && (
+        <p role="status" className="mt-3 text-sm text-muted-foreground">
+          {review_message}{" "}
+          <Link to="/carrito" className="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ir al carrito</Link>
+        </p>
+      )}
     </section>
   )
 }

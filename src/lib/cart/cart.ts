@@ -1,4 +1,4 @@
-import type { CartProduct, CartItem, CartAction, CartQuantityLimits, CartValidationResult, CartPagination } from "@/lib/cart/types"
+import type { CartProduct, CartItem, CartAction, CartItemValidation, CartQuantityConditions, CartQuantityLimits, CartValidationResult, CartPagination } from "@/lib/cart/types"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
 import type { SalesChannel } from "@/lib/channel/types"
 import { get_product_indices, search_client } from "@/lib/algolia/algolia"
@@ -84,7 +84,7 @@ export function save_cart(user_id: string | null, cart: CartItem[]): boolean {
  * @returns Resultado con estado error, sin límites y con un mensaje para reintentar.
  */
 export function get_cart_validation_error(item: CartItem): CartValidationResult {
-  return { original_item: item, item, status: "error", limits: null, message: "No pudimos actualizar este producto. Intenta de nuevo." }
+  return { original_item: item, item, status: "error", limits: null, conditions: null, message: "No pudimos actualizar este producto. Intenta de nuevo." }
 }
 
 /**
@@ -104,7 +104,7 @@ export function get_cart_validation_error(item: CartItem): CartValidationResult 
  */
 export function validate_cart_item(item: CartItem, product: ProductRecord | undefined, available_quantity: number): CartValidationResult {
   if (!product || product.product_id !== item.product_id || product.sku !== item.sku) {
-    return { original_item: item, item, status: "unavailable", limits: null, message: "Este producto ya no está disponible. Puedes quitarlo del carrito." }
+    return { original_item: item, item, status: "unavailable", limits: null, conditions: null, message: "Este producto ya no está disponible. Puedes quitarlo del carrito." }
   }
   if (!is_nonempty_string(product.title) || !is_valid_image(product.image) || !is_valid_currency(product.currency) ||
     !is_valid_price(product.price) || typeof product.on_discount !== "boolean") return get_cart_validation_error(item)
@@ -125,19 +125,126 @@ export function validate_cart_item(item: CartItem, product: ProductRecord | unde
 
   const limits = get_cart_quantity_limits(product, available_quantity)
   if (!limits) return get_cart_validation_error(item)
+  const conditions = get_cart_quantity_conditions(product)
   const updated_item = create_cart_item({ ...product, on_discount: has_active_discount }, item.selected_size, item.quantity)
   if (!is_valid_price(updated_item.unit_price)) return get_cart_validation_error(item)
   const has_same_details = item.id === updated_item.id && item.title === updated_item.title && item.currency === updated_item.currency &&
     item.unit_price === updated_item.unit_price && item.image.url === updated_item.image.url && item.image.alt === updated_item.image.alt
   const current_item = has_same_details ? item : updated_item
   if (limits.max_quantity < limits.min_quantity) {
-    return { original_item: item, item: current_item, status: "unavailable", limits, message: "Esta talla ya no está disponible para tu compra. Prueba otra talla o color." }
+    return { original_item: item, item: current_item, status: "unavailable", limits, conditions, message: get_cart_unavailable_message(conditions, available_quantity) }
   }
   if (!is_valid_cart_quantity(item.quantity, limits)) {
-    return { original_item: item, item: current_item, status: "invalid_quantity", limits, message: "Ajusta la cantidad o quita el producto para continuar." }
+    return { original_item: item, item: current_item, status: "invalid_quantity", limits, conditions, message: get_cart_quantity_issue_message(item.quantity, limits, conditions, available_quantity) }
   }
   if (!is_valid_price(updated_item.unit_price, updated_item.quantity)) return get_cart_validation_error(item)
-  return { original_item: item, item: current_item, status: "valid", limits }
+  return { original_item: item, item: current_item, status: "valid", limits, conditions }
+}
+
+/**
+ * Obtiene las condiciones de compra de una variante tal como vienen en el índice del canal.
+ * @param product Reglas de cantidad del producto.
+ * @returns Mínimo, máximo y paso de compra, sin recortar por el stock.
+ */
+export function get_cart_quantity_conditions(product: QuantityProduct): CartQuantityConditions {
+  const { min_order_quantity, max_order_quantity, step_quantity } = product
+  return { min_order_quantity, max_order_quantity, step_quantity }
+}
+
+/**
+ * Da formato a una cantidad de unidades en singular o plural.
+ * @param quantity Cantidad de unidades.
+ * @returns Texto con la cantidad y la palabra unidad o unidades.
+ */
+function format_units(quantity: number): string {
+  return `${quantity} ${quantity === 1 ? "unidad" : "unidades"}`
+}
+
+/**
+ * Describe las condiciones de compra de una línea cuando exigen más de una unidad.
+ * @param conditions Condiciones de compra de la variante, o null si no se conocen.
+ * @returns Texto con el mínimo, el paso si es mayor que 1 y el máximo, o null si el mínimo es 1 o no hay condiciones.
+ */
+export function get_cart_conditions_text(conditions: CartQuantityConditions | null): string | null {
+  if (!conditions || conditions.min_order_quantity <= 1) return null
+  const parts = [`Compra mínima: ${format_units(conditions.min_order_quantity)}`]
+  if (conditions.step_quantity > 1) parts.push(`de ${conditions.step_quantity} en ${conditions.step_quantity}`)
+  parts.push(`máximo: ${format_units(conditions.max_order_quantity)}`)
+  return parts.join(" · ")
+}
+
+/**
+ * Obtiene el aviso general del carrito cuando hay líneas que impiden continuar con la compra.
+ * Si todas las líneas señaladas incumplen sus condiciones de cantidad, lo indica con su número.
+ * @param validations Validaciones de las líneas del carrito.
+ * @returns Mensaje de revisión, o null si ninguna línea está señalada.
+ */
+export function get_cart_review_message(validations: CartItemValidation[]): string | null {
+  const flagged = validations.filter((validation) => validation.status !== "valid" && validation.status !== "pending")
+  if (flagged.length === 0) return null
+  if (flagged.every((validation) => validation.status === "invalid_quantity")) {
+    return flagged.length === 1
+      ? "1 producto no cumple las condiciones de compra. Ajusta su cantidad para continuar."
+      : `${flagged.length} productos no cumplen las condiciones de compra. Ajusta sus cantidades para continuar.`
+  }
+  return flagged.length === 1 ? "Revisa el producto señalado antes de continuar." : `Revisa los ${flagged.length} productos señalados antes de continuar.`
+}
+
+/**
+ * Explica por qué se ajustó o se quitó automáticamente una línea al reconciliar el carrito.
+ * @param result Validación de la línea antes del ajuste.
+ * @param quantity Cantidad que quedó en la línea; 0 si se quitó.
+ * @returns Motivo del ajuste para la persona compradora.
+ */
+export function get_cart_adjustment_reason(result: CartValidationResult, quantity: number): string {
+  const { status, limits, conditions, original_item, message } = result
+  if (status === "unavailable") return message ?? "Este producto ya no está disponible."
+  if (!limits || !conditions) return "Ajustamos la cantidad a las unidades permitidas."
+  if (original_item.quantity < limits.min_quantity) return `La compra mínima es de ${format_units(limits.min_quantity)}.`
+  if (original_item.quantity > conditions.max_order_quantity) return `El máximo por compra es de ${format_units(conditions.max_order_quantity)}.`
+  if (original_item.quantity > limits.max_quantity) return `Solo hay ${format_units(limits.max_quantity)} disponibles para tu compra.`
+  if (quantity > 0 && limits.step_quantity > 1) return `Este producto se compra de ${limits.step_quantity} en ${limits.step_quantity}.`
+  return "Ajustamos la cantidad a las unidades permitidas."
+}
+
+/**
+ * Obtiene el mensaje de una línea que no se puede comprar porque el stock no alcanza el mínimo.
+ * Si hay unidades pero menos que una compra mínima mayor que 1, explica ambas cantidades.
+ * @param conditions Condiciones de compra de la variante.
+ * @param available_quantity Stock disponible de la talla.
+ * @returns Mensaje para la persona compradora.
+ */
+export function get_cart_unavailable_message(conditions: CartQuantityConditions, available_quantity: number): string {
+  if (available_quantity > 0 && conditions.min_order_quantity > 1) {
+    return `Solo hay ${format_units(available_quantity)} disponibles y la compra mínima es de ${format_units(conditions.min_order_quantity)}. Prueba otra tienda, talla o color.`
+  }
+  return "Esta talla ya no está disponible para tu compra. Prueba otra talla o color."
+}
+
+/**
+ * Obtiene el motivo por el que la cantidad de una línea no cumple sus condiciones de compra.
+ * Distingue el mínimo, el máximo de la regla, el stock disponible y el paso.
+ * @param quantity Cantidad de la línea.
+ * @param limits Límites de cantidad de la línea, con el máximo recortado por el stock.
+ * @param conditions Condiciones de compra de la variante.
+ * @param available_quantity Stock disponible de la talla.
+ * @returns Mensaje con el motivo y la acción para continuar.
+ */
+export function get_cart_quantity_issue_message(quantity: number, limits: CartQuantityLimits, conditions: CartQuantityConditions, available_quantity: number): string {
+  const { min_quantity, max_quantity, step_quantity } = limits
+  if (quantity < min_quantity) {
+    return `La compra mínima es de ${format_units(min_quantity)}. Agrega ${min_quantity - quantity} más o quita el producto.`
+  }
+  if (quantity > max_quantity) {
+    return available_quantity < conditions.max_order_quantity
+      ? `Solo hay ${format_units(available_quantity)} disponibles. Reduce la cantidad a ${max_quantity}.`
+      : `El máximo por compra es de ${format_units(conditions.max_order_quantity)}. Reduce la cantidad a ${max_quantity}.`
+  }
+  const lower_quantity = min_quantity + Math.floor((quantity - min_quantity) / step_quantity) * step_quantity
+  const upper_quantity = Math.min(lower_quantity + step_quantity, max_quantity)
+  return lower_quantity === upper_quantity
+    ? `Este producto se compra de ${step_quantity} en ${step_quantity}. Elige ${format_units(lower_quantity)}.`
+    : `Este producto se compra de ${step_quantity} en ${step_quantity}. Elige ${lower_quantity} o ${upper_quantity} unidades.`
 }
 
 /**

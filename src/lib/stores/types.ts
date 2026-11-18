@@ -16,6 +16,7 @@ export type StoreCartChange = {
   selected_size: string
   previous_quantity: number
   quantity: number
+  reason: string
 }
 
 export type StoreCartNotice = { store: Store | null; changes: StoreCartChange[] }

@@ -1,3 +1,4 @@
+import { get_cart_adjustment_reason } from "@/lib/cart/cart"
 import type { CartValidationResult } from "@/lib/cart/types"
 import { get_product_variants } from "@/lib/catalog/catalog"
 import type { SalesChannel } from "@/lib/channel/types"
@@ -120,7 +121,7 @@ export function reconcile_store_cart(results: CartValidationResult[]): StoreCart
       ? 0 : limits.min_quantity + Math.floor((quantity_cap - limits.min_quantity) / limits.step_quantity) * limits.step_quantity
     if (quantity === 0) removed_item_ids.push(item.id)
     else validations.push({ ...result, item: { ...item, quantity }, status: "valid", message: undefined })
-    changes.push({ item_id: item.id, title: item.title, image: item.image, selected_size: item.selected_size, previous_quantity: original_item.quantity, quantity })
+    changes.push({ item_id: item.id, title: item.title, image: item.image, selected_size: item.selected_size, previous_quantity: original_item.quantity, quantity, reason: get_cart_adjustment_reason(result, quantity) })
   }
   return { validations, removed_item_ids, changes }
 }
