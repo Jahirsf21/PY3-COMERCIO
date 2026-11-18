@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import type { OrderDetails, OrdersContextValue, PayOrderResult, PreparedOrder } from "@/lib/orders/types"
 import type { CardPaymentData, PaymentResult } from "@/lib/payments/types"
-import { add_order, cancel_order, complete_order_payment, create_order, create_order_payment, get_next_order_number, get_order_payment_block, get_stored_orders, recover_interrupted_payments, save_orders, start_order_payment } from "@/lib/orders/orders"
+import { add_order, cancel_order, complete_order_payment, create_order, create_order_payment, get_order_payment_block, get_stored_orders, recover_interrupted_payments, save_orders, start_order_payment } from "@/lib/orders/orders"
 import { process_payment, validate_card_payment_data } from "@/lib/payments/payments"
 import OrdersContext from "@/lib/orders/ordersContext"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
@@ -25,9 +25,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const { owner_id, track_event } = useAnalytics()
   const { user } = useAuth()
   const is_admin = user?.role === "ADMIN"
-  const current_session = useRef({ owner_id, is_admin })
-  useLayoutEffect(() => { current_session.current = { owner_id, is_admin } }, [owner_id, is_admin])
-  const visible_orders = orders.filter((order) => is_admin || order.user_id === owner_id)
+  const current_session = useRef({ owner_id, is_admin, user })
+  useLayoutEffect(() => { current_session.current = { owner_id, is_admin, user } }, [owner_id, is_admin, user])
+  const visible_orders = orders
+    .filter((order) => is_admin || order.user_id === owner_id)
+    .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
 
   /**
    * Recupera únicamente pedidos del usuario o invitado activo, o cualquier pedido para ADMIN.
@@ -63,8 +65,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
    */
   function generate_order(prepared_order: PreparedOrder): OrderDetails | null {
     const active_session = current_session.current
-    if (active_session.is_admin) return null
-    const order = create_order(prepared_order, get_next_order_number(current_orders.current), active_session.owner_id)
+    if (active_session.is_admin || active_session.owner_id !== owner_id || active_session.user !== user) return null
+    const order = create_order(prepared_order, active_session.owner_id, active_session.user)
     if (!order || !commit_orders(add_order(current_orders.current, order))) return null
     return order
   }
