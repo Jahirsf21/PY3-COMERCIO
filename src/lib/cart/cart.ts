@@ -365,10 +365,10 @@ export function get_cart_item_id(sku: string, selected_size: string): string {
 
 /**
  * Calcula el precio unitario de un producto aplicando su descuento si está activo.
- * @param product Producto que se agregará al carrito.
+ * @param product Precio, descuento y estado del descuento del producto.
  * @returns Precio unitario con el descuento aplicado, o price si no tiene descuento.
  */
-export function get_product_unit_price(product: CartProduct): number {
+export function get_product_unit_price(product: Pick<CartProduct, "price" | "discount" | "on_discount">): number {
   if (product.on_discount && product.discount) {
     return product.price * (1 - product.discount.percentage / 100)
   }
