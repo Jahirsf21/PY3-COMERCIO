@@ -109,7 +109,7 @@ export function AddToCartForm({
   if (user?.role === "ADMIN") return null
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 border-t border-input pt-5" aria-busy={isSubmitting}>
+    <form onSubmit={handleSubmit} className="space-y-4 border-t border-border pt-5" aria-busy={isSubmitting}>
       <div className="space-y-3">
         <label htmlFor={`${id}-quantity`} className="block font-medium">Cantidad</label>
         <div className="flex items-center gap-2">

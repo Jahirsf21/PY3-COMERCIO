@@ -12,6 +12,7 @@ import { CartItemCard } from "@/features/cart/components/CartItemCard"
 import { CartStatus } from "@/features/cart/components/CartStatus"
 import { CartSuggestions } from "@/features/cart/components/CartSuggestions"
 import { HistoryRecommendations } from "@/features/catalog/components/results/HistoryRecommendations"
+import { routes } from "@/lib/navigation/routes"
 
 
 export default function CartPage() {
@@ -43,7 +44,7 @@ export default function CartPage() {
       <ShopHeader sticky />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Tu carrito</h1>
+          <h1 className="text-3xl font-bold tracking-tight uppercase">Tu carrito</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Revisa los productos antes de continuar
           </p>
@@ -52,8 +53,8 @@ export default function CartPage() {
         <CartStatus className="mb-6" />
 
         {cart.length === 0 ? (
-          <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border border-input px-6 py-12 text-center">
-            <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-muted">
+          <section className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
+            <div className="mb-4 flex size-14 items-center justify-center rounded-lg bg-muted">
               <ShoppingCartIcon aria-hidden="true" className="size-6 text-muted-foreground" />
             </div>
             <h2 className="text-lg font-semibold">Tu carrito está vacío</h2>
@@ -124,7 +125,7 @@ export default function CartPage() {
                 </Pagination>
               )}
             </div>
-            <aside className="min-w-0 rounded-xl border border-input bg-card p-5 lg:top-28">
+            <aside className="min-w-0 rounded-2xl border border-border bg-card p-5 lg:top-28">
               <h2 className="text-lg font-semibold">Resumen del carrito</h2>
               <dl className="mt-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
@@ -150,7 +151,7 @@ export default function CartPage() {
               </dl>
               {user?.role !== "ADMIN" && <Button
                 nativeButton={false}
-                render={<Link to="/checkout" />}
+                render={<Link to={routes.checkout} />}
                 disabled={!can_checkout}
                 onClick={(event) => { if (!can_checkout) event.preventDefault() }}
                 size="lg"

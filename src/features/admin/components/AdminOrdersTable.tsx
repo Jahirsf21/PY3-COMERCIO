@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AdminOrderAccount } from "@/features/admin/components/AdminOrderAccount"
+import { OrderThumbnail } from "@/features/orders/components/OrderThumbnail"
 import { order_customer_labels, order_status_labels, payment_status_labels } from "@/features/admin/orderLabels"
 import { format_order_date } from "@/lib/orders/orders"
 import type { AdminOrderSummary } from "@/lib/orders/types"
 import { cn, format_price } from "@/lib/shared/utils"
+import { admin_order_path } from "@/lib/navigation/routes"
 
 const badge_tones = {
   neutral: "border-border bg-muted text-muted-foreground",
@@ -60,7 +62,7 @@ function OrderDetailLink({ order }: { order: AdminOrderSummary }) {
       variant="outline"
       size="sm"
       nativeButton={false}
-      render={<Link to={`/admin/pedido/${encodeURIComponent(order.id)}`} />}
+      render={<Link to={admin_order_path(order.id)} />}
       aria-label={`Ver detalle de ${order.order_number}`}
       className="h-8 cursor-pointer"
     >
@@ -82,22 +84,27 @@ export function AdminOrdersTable({ orders }: { orders: AdminOrderSummary[] }) {
           <TableCaption className="sr-only">Órdenes registradas</TableCaption>
           <TableHeader className="bg-muted/60">
             <TableRow>
-              <TableHead scope="col" className="w-[17%] pl-5">Orden</TableHead>
-              <TableHead scope="col" className="w-[15%]">Cuenta</TableHead>
-              <TableHead scope="col" className="w-[13%]">Destinatario</TableHead>
-              <TableHead scope="col" className="w-[11%]">Sucursal</TableHead>
+              <TableHead scope="col" className="w-[21%] pl-5">Orden</TableHead>
+              <TableHead scope="col" className="w-[14%]">Cuenta</TableHead>
+              <TableHead scope="col" className="w-[12%]">Destinatario</TableHead>
+              <TableHead scope="col" className="w-[10%]">Sucursal</TableHead>
               <TableHead scope="col" className="w-[10%] pr-3 text-right">Total</TableHead>
               <TableHead scope="col" className="w-[11%] px-1">Estado</TableHead>
               <TableHead scope="col" className="w-[11%] px-1">Pago</TableHead>
-              <TableHead scope="col" className="w-[12%] pr-4 text-right">Acciones</TableHead>
+              <TableHead scope="col" className="w-[11%] pr-4 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {orders.map((order) => (
               <TableRow key={order.id}>
-                <TableCell className="space-y-1 py-3 pr-4 pl-5 whitespace-normal">
-                  <span className="block font-mono text-xs font-medium wrap-anywhere">{order.order_number}</span>
-                  <time dateTime={order.created_at} className="block text-xs text-muted-foreground">{format_order_date(order.created_at)}</time>
+                <TableCell className="py-3 pr-4 pl-5 whitespace-normal">
+                  <div className="flex items-center gap-3">
+                    <OrderThumbnail image={order.first_item_image} items_count={order.items_count} size="sm" />
+                    <div className="min-w-0 space-y-1">
+                      <span className="block font-mono text-xs font-medium wrap-anywhere">{order.order_number}</span>
+                      <time dateTime={order.created_at} className="block text-xs text-muted-foreground">{format_order_date(order.created_at)}</time>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="space-y-1 py-3 whitespace-normal">
                   <AdminOrderAccount account={order.account} role={order.role} />
@@ -120,9 +127,12 @@ export function AdminOrdersTable({ orders }: { orders: AdminOrderSummary[] }) {
           <li key={order.id} className="min-w-0">
             <Card size="sm" className="h-full gap-3">
               <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className="font-mono text-xs font-semibold wrap-anywhere">{order.order_number}</h3>
-                  <time dateTime={order.created_at} className="block text-xs text-muted-foreground">{format_order_date(order.created_at)}</time>
+                <div className="flex items-center gap-3">
+                  <OrderThumbnail image={order.first_item_image} items_count={order.items_count} size="sm" />
+                  <div className="min-w-0 space-y-1">
+                    <h3 className="font-mono text-xs font-semibold wrap-anywhere">{order.order_number}</h3>
+                    <time dateTime={order.created_at} className="block text-xs text-muted-foreground">{format_order_date(order.created_at)}</time>
+                  </div>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-2">
                   <div className="col-span-2">

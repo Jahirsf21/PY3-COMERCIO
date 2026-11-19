@@ -26,7 +26,7 @@ export function PaginationControls({ onPageChange }: { onPageChange: () => void 
   );
 
   return (
-    <Pagination className="mt-2 shrink-0 flex-wrap items-center gap-3 border-t border-input bg-background p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <Pagination className="mt-2 shrink-0 flex-wrap items-center gap-3 border-t border-border bg-background p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <PaginationContent className="flex-wrap justify-center">
         <PaginationItem>
           <PaginationPrevious

@@ -44,7 +44,7 @@ export function RecentlyViewedProducts() {
   const products = !is_loading ? result.products : []
   if (!is_loading && !has_error && products.length === 0) return null
 
-  const title = <h2 id="recently-viewed-title" className="text-xl font-semibold">Vistos recientemente</h2>
+  const title = <h2 id="recently-viewed-title" className="text-xl font-bold tracking-tight uppercase">Vistos recientemente</h2>
 
   return (
     <section aria-labelledby="recently-viewed-title" aria-busy={is_loading} className="mb-8">

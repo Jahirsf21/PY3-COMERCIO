@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { ArrowLeftIcon, TriangleAlertIcon } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
-import { ShopHeader } from "@/components/shop-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { AdminOrderAccount } from "@/features/admin/components/AdminOrderAccount"
@@ -13,6 +12,7 @@ import type { User } from "@/lib/auth/types"
 import { format_order_date } from "@/lib/orders/orders"
 import { get_indexed_admin_order } from "@/lib/orders/ordersIndex"
 import type { AdminOrderDetail } from "@/lib/orders/types"
+import { routes } from "@/lib/navigation/routes"
 
 /** Respuesta del detalle de una orden. */
 type DetailResponse = {
@@ -44,17 +44,15 @@ export default function AdminOrderDetailPage({ user }: { user: User }) {
   }, [user, orderId, attempt])
 
   return (
-    <div className="min-h-dvh bg-muted/35">
-      <ShopHeader sticky />
-      <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-7 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl space-y-5">
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link to="/admin" />}
+          render={<Link to={routes.admin_orders} />}
           className="h-9"
         >
           <ArrowLeftIcon aria-hidden="true" />
-          Volver al dashboard
+          Volver a órdenes
         </Button>
         {current === null ? (
           <p role="status" className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Buscando la orden…</p>
@@ -70,7 +68,7 @@ export default function AdminOrderDetailPage({ user }: { user: User }) {
         ) : !order ? (
           <section className="rounded-xl border bg-card p-5">
             <h1 className="text-xl font-semibold">No encontramos esta orden</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Verifica el enlace o vuelve al dashboard para consultar las órdenes registradas.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Verifica el enlace o vuelve a Órdenes para consultar las órdenes registradas.</p>
           </section>
         ) : (
           <>
@@ -111,7 +109,6 @@ export default function AdminOrderDetailPage({ user }: { user: User }) {
             <OrderCustomerInfo order={order} />
           </>
         )}
-      </main>
     </div>
   )
 }

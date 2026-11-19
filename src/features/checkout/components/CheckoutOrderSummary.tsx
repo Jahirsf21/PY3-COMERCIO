@@ -4,6 +4,7 @@ import { get_cart_review_message } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import type { DeliveryMethod } from "@/lib/checkout/types"
 import { format_price } from "@/lib/shared/utils"
+import { routes } from "@/lib/navigation/routes"
 
 type CheckoutOrderSummaryProps = {
   delivery_method: DeliveryMethod | null
@@ -21,7 +22,7 @@ export function CheckoutOrderSummary({ delivery_method, is_store_ready, is_assig
   const can_show_amounts = can_checkout && is_store_ready
 
   return (
-    <section aria-labelledby="checkout-order-summary-title" className="min-w-0 rounded-xl border border-input bg-card p-5">
+    <section aria-labelledby="checkout-order-summary-title" className="min-w-0 rounded-2xl border border-border bg-card p-5">
       <h2 id="checkout-order-summary-title" className="text-lg font-semibold">2. Resumen de la orden</h2>
       <dl className="mt-4 space-y-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -47,7 +48,7 @@ export function CheckoutOrderSummary({ delivery_method, is_store_ready, is_assig
       {review_message && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
           {review_message}{" "}
-          <Link to="/carrito" className="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ir al carrito</Link>
+          <Link to={routes.cart} className="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ir al carrito</Link>
         </p>
       )}
     </section>

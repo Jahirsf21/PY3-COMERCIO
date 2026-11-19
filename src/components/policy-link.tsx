@@ -11,7 +11,7 @@ type PolicyLinkProps = {
  * Así la persona puede leer las políticas sin perder los datos escritos en el checkout o el pago.
  * Al estar dentro de un label, el navegador no cambia la casilla al activar el enlace.
  * @param props Propiedades del enlace.
- * @param props.to Ruta de la sección en Políticas y Ayuda, por ejemplo "/politicas-y-ayuda#terminos-y-condiciones".
+ * @param props.to Ruta de la sección en Políticas y Ayuda, por ejemplo "/policies#terminos-y-condiciones".
  * @param props.children Texto visible del enlace.
  * @returns Enlace con target="_blank" y rel="noopener noreferrer".
  */

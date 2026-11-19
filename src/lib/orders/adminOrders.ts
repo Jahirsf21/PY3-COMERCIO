@@ -1,17 +1,19 @@
 import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import { get_indexed_account_identities } from "@/lib/auth/accountIndex"
 import type { User } from "@/lib/auth/types"
-import type { AdminOrderSearchInput, AdminOrderSearchResult, AdminOrderSummary, OrderCustomer, OrderStatus } from "@/lib/orders/types"
+import type { AdminOrderSearchInput, AdminOrderSearchResult, AdminOrderStats, AdminOrderSummary, OrderCustomer, OrderStatus } from "@/lib/orders/types"
 import type { PaymentStatus } from "@/lib/payments/types"
-import { get_filter_value, is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_price } from "@/lib/shared/utils"
+import { get_filter_value, is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price } from "@/lib/shared/utils"
 import { get_store } from "@/lib/stores/stores"
 
 const order_roles: OrderCustomer["role"][] = ["B2C", "B2B", "GUEST"]
 const order_statuses: OrderStatus[] = ["PENDING", "CONFIRMED", "CANCELLED"]
 const payment_statuses: PaymentStatus[] = ["PENDING", "APPROVE", "DECLINED", "ERROR"]
 const order_summary_attributes = [
-  "order_number", "buyer.full_name", "company.name", "created_at", "user_id", "role", "store.id", "total", "currency", "status", "payment.status",
+  "order_number", "buyer.full_name", "company.name", "created_at", "user_id", "role", "store.id", "total", "currency", "status", "payment.status", "items.image",
 ]
+const order_stats_attributes = ["status", "payment.status", "total", "currency"]
+const admin_order_stats_limit = 1000
 const admin_orders_page_size = 20
 const admin_orders_filter_fallback_limit = 100
 const admin_orders_read_error = "No pudimos consultar las órdenes. Intenta nuevamente."
@@ -55,7 +57,7 @@ function get_admin_order_filters({ role, store_id, status, payment_status }: Adm
  */
 function parse_admin_order_summary(hit: unknown): AdminOrderSummary | null {
   if (!is_record(hit)) return null
-  const { objectID, order_number, created_at, user_id, buyer, role, company, store, total, currency, status, payment } = hit
+  const { objectID, order_number, created_at, user_id, buyer, role, company, store, total, currency, status, payment, items } = hit
   const order_store = is_record(store) && is_nonempty_string(store.id) ? get_store(store.id) : null
   if (!is_nonempty_string(objectID) || !is_nonempty_string(order_number) || !is_valid_date(created_at) || !is_nonempty_string(user_id) ||
     !is_record(buyer) || !is_nonempty_string(buyer.full_name) || !is_order_option(role, order_roles) ||
@@ -68,6 +70,8 @@ function parse_admin_order_summary(hit: unknown): AdminOrderSummary | null {
   if (payment != null && !is_record(payment)) return null
   const payment_status = is_record(payment) ? payment.status ?? null : null
   if (payment_status !== null && !is_order_option(payment_status, payment_statuses)) return null
+  const order_items = Array.isArray(items) ? items : []
+  const first_image = is_record(order_items[0]) && is_valid_image(order_items[0].image) ? order_items[0].image : null
 
   return {
     id: objectID,
@@ -83,6 +87,8 @@ function parse_admin_order_summary(hit: unknown): AdminOrderSummary | null {
     currency,
     status,
     payment_status,
+    first_item_image: first_image ? { url: first_image.url.trim(), alt: first_image.alt } : null,
+    items_count: order_items.length,
   }
 }
 
@@ -170,5 +176,53 @@ export async function search_admin_orders(user: User | null, input: AdminOrderSe
       ...order,
       account: order.role === "GUEST" ? null : accounts.get(order.user_id) ?? null,
     })),
+  }
+}
+
+/**
+ * Calcula el resumen de órdenes del panel: total, pagadas, pendientes y monto pagado por moneda.
+ * @param user Usuario de la sesión simulada.
+ * @returns Conteos y montos; is_partial indica que hay más órdenes que las leídas.
+ * @throws Si no hay acceso o la consulta falla.
+ */
+export async function get_admin_order_stats(user: User | null): Promise<AdminOrderStats> {
+  if (user?.role !== "ADMIN") throw new Error("Solo el administrador puede consultar todas las órdenes.")
+  const index_name = algolia_indices.orders
+  if (!index_name) throw new Error("La consulta administrativa de órdenes no está configurada.")
+
+  const response = await search_client.searchWithHTTPInfo({
+    requests: [{
+      indexName: index_name,
+      query: "",
+      hitsPerPage: admin_order_stats_limit,
+      distinct: false,
+      analytics: false,
+      attributesToRetrieve: order_stats_attributes,
+      attributesToHighlight: [],
+      attributesToSnippet: [],
+    }],
+  }).catch(() => { throw new Error(admin_orders_read_error) })
+
+  const result: unknown = response?.data?.results?.[0]
+  if (!is_record(result) || !Array.isArray(result.hits) || !is_non_negative_integer(result.nbHits)) throw new Error(admin_orders_read_error)
+
+  const paid_totals = new Map<string, number>()
+  let paid_orders = 0
+  let pending_orders = 0
+  for (const hit of result.hits) {
+    if (!is_record(hit)) continue
+    if (hit.status === "PENDING") pending_orders += 1
+    const payment_status = is_record(hit.payment) ? hit.payment.status : null
+    if (payment_status === "APPROVE" && is_valid_price(hit.total) && is_valid_currency(hit.currency)) {
+      paid_orders += 1
+      paid_totals.set(hit.currency, (paid_totals.get(hit.currency) ?? 0) + hit.total)
+    }
+  }
+  return {
+    total_orders: result.nbHits,
+    paid_orders,
+    pending_orders,
+    paid_totals: [...paid_totals].map(([currency, amount]) => ({ currency, amount: Math.round(amount * 100) / 100 })),
+    is_partial: result.nbHits > result.hits.length,
   }
 }

@@ -11,6 +11,7 @@ import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrder
 import { format_order_date, get_order_availability } from "@/lib/orders/orders"
 import { useOrders } from "@/lib/orders/ordersContext"
 import { useAuth } from "@/lib/auth/authContext"
+import { order_payment_path } from "@/lib/navigation/routes"
 
 /**
  * Recupera un pedido por su identificador y muestra sus productos, datos del cliente y acciones permitidas.
@@ -31,8 +32,8 @@ export default function OrderDetailPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
         <OrdersNotice />
         {!order || !availability ? (
-          <section className="rounded-xl border border-input bg-card p-6">
-            <h1 className="text-2xl font-semibold">{orders_read_status === "loading" ? "Buscando el pedido…"
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <h1 className="text-2xl font-bold tracking-tight">{orders_read_status === "loading" ? "Buscando el pedido…"
               : storage_error || orders_read_status === "error" ? "No pudimos recuperar este pedido" : "No encontramos este pedido"}</h1>
             {orders_read_status === "ready" && !storage_error && (
               <p className="mt-2 text-sm text-muted-foreground">Revisa tus pedidos o verifica el enlace.</p>
@@ -42,26 +43,26 @@ export default function OrderDetailPage() {
           <PaymentConfirmation order={order} show_order_link={false} />
         ) : (
           <div className="space-y-6">
-            <section aria-labelledby="order-detail-title" className="min-w-0 rounded-xl border border-input bg-card p-5 sm:p-6">
+            <section aria-labelledby="order-detail-title" className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 id="order-detail-title" className="text-2xl font-semibold">Pedido #{order.order_number}</h1>
+                <h1 id="order-detail-title" className="text-2xl font-bold tracking-tight wrap-anywhere sm:text-3xl">Pedido #{order.order_number}</h1>
                 <OrderStatusBadge order={order} has_unsaved_result={has_unsaved_result} />
               </div>
               <p className="mt-2 text-sm text-muted-foreground"><time dateTime={order.created_at}>{format_order_date(order.created_at)}</time></p>
               {user?.role !== "ADMIN" && (availability.can_pay || availability.can_cancel || availability.is_processing || has_unsaved_result) && (
                 <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
                   {availability.can_pay && (
-                    <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ className: "cursor-pointer" })}>
+                    <Link to={order_payment_path(order.id)} className={buttonVariants({ className: "cursor-pointer" })}>
                       Continuar pago
                     </Link>
                   )}
                   {availability.is_processing && (
-                    <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ variant: "outline", className: "cursor-pointer" })}>
+                    <Link to={order_payment_path(order.id)} className={buttonVariants({ variant: "outline", className: "cursor-pointer" })}>
                       Ver estado del pago
                     </Link>
                   )}
                   {has_unsaved_result && (
-                    <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ className: "cursor-pointer" })}>
+                    <Link to={order_payment_path(order.id)} className={buttonVariants({ className: "cursor-pointer" })}>
                       Revisar resultado
                     </Link>
                   )}

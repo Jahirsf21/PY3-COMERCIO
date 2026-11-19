@@ -7,6 +7,7 @@ import type { CartItem } from "@/lib/cart/types"
 import { get_available_quantity_text } from "@/lib/stores/stores"
 import { useStores } from "@/lib/stores/storesContext"
 import { format_price } from "@/lib/shared/utils"
+import { product_path } from "@/lib/navigation/routes"
 
 type CartItemCardProps = {
   item: CartItem
@@ -26,13 +27,13 @@ export function CartItemCard({ item }: CartItemCardProps) {
   const conditionsText = get_cart_conditions_text(validation?.conditions ?? null)
   const priceConfirmed = confirmed || validation?.status === "invalid_quantity" || (validation?.status === "unavailable" && validation.limits !== null)
   return (
-    <li className="@container min-w-0 rounded-xl border border-input bg-card p-4">
+    <li className="@container min-w-0 rounded-2xl border border-border bg-card p-4">
       <div className="grid gap-4 @sm:grid-cols-[96px_minmax(0,1fr)]">
         <img src={item.image.url} alt={item.image.alt} className="size-24 rounded-lg bg-muted object-contain" loading="lazy" />
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <Link
-              to={`/producto/${encodeURIComponent(item.product_id)}?${new URLSearchParams({ variante: item.sku, talla: item.selected_size })}`}
+              to={product_path(item.product_id, { variante: item.sku, talla: item.selected_size })}
               className="rounded-sm font-medium leading-snug break-words hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {item.title}

@@ -40,7 +40,7 @@ export function ProductSuggestions({ product }: ProductSuggestionsProps) {
   const is_loading = suggestion_result?.request_key !== request_key
   const has_error = !is_loading && suggestion_result.has_error
   const products = !is_loading ? suggestion_result.products : []
-  const suggestions_title = <h2 id="product-suggestions-title" className="text-2xl font-semibold">Productos sugeridos</h2>
+  const suggestions_title = <h2 id="product-suggestions-title" className="text-2xl font-bold tracking-tight uppercase">Productos sugeridos</h2>
 
   return (
     <section aria-labelledby="product-suggestions-title" aria-busy={is_loading} className="mt-10 pt-8 lg:mt-14 lg:pt-10">

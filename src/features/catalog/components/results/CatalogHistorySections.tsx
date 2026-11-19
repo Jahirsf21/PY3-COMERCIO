@@ -23,7 +23,7 @@ export function CatalogHistorySections() {
     <>
       <RecentlyViewedProducts />
       <HistoryRecommendations className="mb-8" />
-      <h2 className="mb-4 text-xl font-semibold">Todos los productos</h2>
+      <h2 className="mb-4 text-xl font-bold tracking-tight uppercase">Todos los productos</h2>
     </>
   )
 }

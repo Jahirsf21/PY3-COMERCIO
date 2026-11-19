@@ -24,7 +24,7 @@ export function OrderCustomerInfo({ order }: OrderCustomerInfoProps) {
   ] : []
 
   return (
-    <section aria-labelledby="payment-customer-title" className="min-w-0 rounded-xl border border-input bg-card p-5 sm:p-6">
+    <section aria-labelledby="payment-customer-title" className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6">
       <h2 id="payment-customer-title" className="text-lg font-semibold">Datos del destinatario</h2>
       <dl className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2">
         {customer_details.map((detail) => (

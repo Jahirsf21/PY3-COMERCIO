@@ -103,6 +103,17 @@ export type AdminOrderSummary = Pick<Order, "id" | "order_number" | "created_at"
   recipient_name: string
   company_name: string | null
   payment_status: PaymentStatus | null
+  first_item_image: ProductImage | null
+  items_count: number
+}
+
+/** Resumen de las órdenes de la tienda para las tarjetas del panel. */
+export type AdminOrderStats = {
+  total_orders: number
+  paid_orders: number
+  pending_orders: number
+  paid_totals: { currency: string; amount: number }[]
+  is_partial: boolean
 }
 
 /** Orden con la cuenta que la realizó. */

@@ -7,7 +7,7 @@ type PaymentOrderSummaryProps = {
 
 export function PaymentOrderSummary({ order }: PaymentOrderSummaryProps) {
   return (
-    <section aria-labelledby="payment-order-summary-title" className="min-w-0 rounded-xl border border-input bg-card p-5">
+    <section aria-labelledby="payment-order-summary-title" className="min-w-0 rounded-2xl border border-border bg-card p-5">
       <h2 id="payment-order-summary-title" className="text-lg font-semibold">Resumen de la compra</h2>
       <p className="mt-2 text-sm text-muted-foreground">{order.delivery_method === "PICKUP" ? "Retiro en" : "Envío desde"} {order.store.locale_name} · {order.store.province}</p>
       <dl className="mt-4 space-y-3 text-sm">

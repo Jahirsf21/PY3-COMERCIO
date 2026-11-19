@@ -165,3 +165,17 @@ export function save_session(user: User | null): boolean {
     return false
   }
 }
+
+/**
+ * Obtiene las iniciales de un nombre completo para mostrarlas en el avatar.
+ * @param full_name Nombre completo del usuario.
+ * @returns Hasta dos iniciales en mayúscula.
+ */
+export function get_initials(full_name: string): string {
+  return full_name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toLocaleUpperCase("es-CR"))
+    .join("")
+}

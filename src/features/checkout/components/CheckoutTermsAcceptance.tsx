@@ -1,5 +1,6 @@
 import { FieldError } from "@/components/ui/field"
 import { PolicyLink } from "@/components/policy-link"
+import { policy_path } from "@/lib/navigation/routes"
 
 type CheckoutTermsAcceptanceProps = {
   checked: boolean
@@ -29,8 +30,8 @@ export function CheckoutTermsAcceptance({ checked, error, onChange }: CheckoutTe
           aria-describedby={error ? "checkout-terms-error" : undefined}
           onChange={(event) => onChange(event.currentTarget.checked)} />
         <span className="text-sm leading-relaxed">
-          He leído y acepto los <PolicyLink to="/politicas-y-ayuda#terminos-y-condiciones">Términos y Condiciones</PolicyLink> y
-          la <PolicyLink to="/politicas-y-ayuda#politica-de-privacidad">Política de Privacidad</PolicyLink>.
+          He leído y acepto los <PolicyLink to={policy_path("terminos-y-condiciones")}>Términos y Condiciones</PolicyLink> y
+          la <PolicyLink to={policy_path("politica-de-privacidad")}>Política de Privacidad</PolicyLink>.
         </span>
       </label>
       <FieldError id="checkout-terms-error">{error}</FieldError>

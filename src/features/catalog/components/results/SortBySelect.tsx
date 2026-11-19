@@ -34,7 +34,7 @@ export function SortBySelect({ floating = false }: { floating?: boolean }) {
             id={id}
             aria-labelledby={`${id}-label ${id}-value`}
             render={
-              <Button className="h-10 w-full cursor-pointer gap-1.5 rounded-full px-4 text-xs shadow-lg hover:shadow-xl motion-reduce:transition-none" />
+              <Button className="h-10 w-full cursor-pointer gap-1.5 px-4 text-xs shadow-lg hover:shadow-xl motion-reduce:transition-none" />
             }
           >
             <ArrowUpDownIcon aria-hidden="true" className="size-3.5" />

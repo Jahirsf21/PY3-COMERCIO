@@ -63,7 +63,7 @@ export function HistoryRecommendations({ excluded_product_ids = [], className }:
   const products = !is_loading ? result.products : []
   if (!is_loading && !has_error && products.length === 0) return null
 
-  const title = <h2 id={title_id} className="text-xl font-semibold">Recomendados para ti</h2>
+  const title = <h2 id={title_id} className="text-xl font-bold tracking-tight uppercase">Recomendados para ti</h2>
 
   return (
     <section aria-labelledby={title_id} aria-busy={is_loading} className={className}>
