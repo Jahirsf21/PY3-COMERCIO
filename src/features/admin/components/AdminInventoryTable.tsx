@@ -1,4 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import type { Store } from "@/lib/stores/types"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { OrderThumbnail } from "@/features/orders/components/OrderThumbnail"
 import { inventory_stores, type InventoryRow } from "@/lib/catalog/adminInventory"
@@ -8,7 +10,13 @@ import { inventory_stores, type InventoryRow } from "@/lib/catalog/adminInventor
  * @param props Variantes de la página actual.
  * @returns Inventario por sede con identificación visual del SKU.
  */
-export function AdminInventoryTable({ rows }: { rows: InventoryRow[] }) {
+export function AdminInventoryTable({ rows, on_edit }: { rows: InventoryRow[]; on_edit: (row: InventoryRow, store: Store) => void }) {
+  /** Muestra el total y abre las tallas registradas. @param row Variante. @param store Sede. @returns Control de edición. */
+  function quantity(row: InventoryRow, store: Store) {
+    const total = row.quantities.get(store.id)
+    if (!Object.keys(row.sizes.get(store.id) ?? {}).length) return total ?? "Sin registro"
+    return <Button size="sm" variant="outline" aria-label={`Editar ${row.sku}, ${store.locale_name}: ${total} unidades`} onClick={() => on_edit(row, store)}>{total} · Editar</Button>
+  }
   return <>
     <div className="hidden lg:block">
       <Table>
@@ -21,7 +29,7 @@ export function AdminInventoryTable({ rows }: { rows: InventoryRow[] }) {
         <TableBody>{rows.map((row) => <TableRow key={row.sku}>
           <TableCell className="py-3 pl-5"><OrderThumbnail image={row.image} items_count={1} size="sm" /></TableCell>
           <th scope="row" className="px-2 text-start text-sm font-semibold wrap-anywhere">{row.title}<span className="block font-mono text-xs font-normal text-muted-foreground">{row.sku}</span></th>
-          {inventory_stores.map((store) => <TableCell key={store.id} className="border-l px-3 text-end tabular-nums">{row.quantities.get(store.id) ?? "Sin registro"}</TableCell>)}
+          {inventory_stores.map((store) => <TableCell key={store.id} className="border-l px-3 text-end tabular-nums">{quantity(row, store)}</TableCell>)}
         </TableRow>)}</TableBody>
       </Table>
     </div>
@@ -31,7 +39,7 @@ export function AdminInventoryTable({ rows }: { rows: InventoryRow[] }) {
           <div className="min-w-0 wrap-anywhere"><h3 className="text-sm font-semibold">{row.title}</h3><p className="font-mono text-xs text-muted-foreground">{row.sku}</p></div>
         </div>
         <dl className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/35 p-2 text-xs">{inventory_stores.map((store) =>
-          <div key={store.id}><dt className="text-muted-foreground">{store.locale_name}</dt><dd className="font-semibold tabular-nums">{row.quantities.get(store.id) ?? "Sin registro"}</dd></div>
+          <div key={store.id}><dt className="text-muted-foreground">{store.locale_name}</dt><dd className="font-semibold tabular-nums">{quantity(row, store)}</dd></div>
         )}</dl>
       </CardContent></Card></li>
     )}</ul>

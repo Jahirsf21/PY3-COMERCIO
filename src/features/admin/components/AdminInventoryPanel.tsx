@@ -8,6 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AdminInventoryTable } from "@/features/admin/components/AdminInventoryTable"
+import { ProductEditor, type EditSelection } from "@/features/admin/components/ProductEditor"
+import { ProductChangeHistory } from "@/features/admin/components/ProductChangeHistory"
 import { AdminPagination } from "@/features/admin/components/AdminPagination"
 import type { User } from "@/lib/auth/types"
 import { get_admin_inventory, type InventoryRow } from "@/lib/catalog/adminInventory"
@@ -20,6 +22,7 @@ import type { SalesChannel } from "@/lib/channel/types"
  */
 export function AdminInventoryPanel({ user }: { user: User }) {
   const [channel, set_channel] = useState<SalesChannel>("b2c")
+  const [selection, set_selection] = useState<EditSelection | null>(null)
   const [attempt, set_attempt] = useState(0)
   const [response, set_response] = useState<{ user: User; channel: SalesChannel; attempt: number; rows: InventoryRow[] | null }>()
   const [query, set_query] = useState("")
@@ -64,9 +67,15 @@ export function AdminInventoryPanel({ user }: { user: User }) {
       {rows === undefined ? <CardContent aria-hidden="true" className="space-y-2 py-4">{[1, 2, 3].map((n) => <Skeleton key={n} className="h-16" />)}</CardContent> :
         rows === null ? <CardContent className="py-4"><Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>No pudimos consultar el inventario</AlertTitle>
           <AlertDescription><Button variant="outline" size="sm" onClick={() => set_attempt(attempt + 1)}>Reintentar</Button></AlertDescription></Alert></CardContent> :
-        matches?.length ? <AdminInventoryTable rows={matches.slice((page - 1) * page_size, page * page_size)} /> :
+        matches?.length ? <AdminInventoryTable rows={matches.slice((page - 1) * page_size, page * page_size)} on_edit={(row, store) => {
+          const sizes = row.sizes.get(store.id)
+          if (sizes) set_selection({ sku: row.sku, channel, store, sizes })
+        }} /> :
           <div className="flex flex-col items-center gap-2 p-10 text-center"><PackageOpenIcon aria-hidden="true" className="text-muted-foreground" />
             <p>{rows.length ? "No hay variantes para esta búsqueda." : "No hay variantes en este canal."}</p></div>}
     </Card>
+    <ProductChangeHistory user={user} />
+    {selection && <ProductEditor user={user} selection={selection} on_close={() => { set_selection(null); set_attempt((a) => a + 1) }}
+      on_saved={() => { set_selection(null); set_attempt((a) => a + 1) }} />}
   </div>
 }

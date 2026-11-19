@@ -479,7 +479,6 @@ export async function get_cart_suggestions(product_ids: string[], channel: Sales
   const { data: { results: category_results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
       indexName: get_product_indices(channel).main,
-      query: "",
       filters: cart_product_filters.join(" OR "),
       facets: ["categories"],
       maxValuesPerFacet: 1000,

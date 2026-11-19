@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AdminCatalogTable } from "@/features/admin/components/AdminCatalogTable"
+import { ProductEditor, type EditSelection } from "@/features/admin/components/ProductEditor"
+import { ProductChangeHistory } from "@/features/admin/components/ProductChangeHistory"
 import { AdminPagination } from "@/features/admin/components/AdminPagination"
 import type { User } from "@/lib/auth/types"
 import { get_admin_catalog, get_admin_catalog_page } from "@/lib/catalog/adminCatalog"
@@ -22,6 +24,7 @@ type CatalogResponse = { user: User; attempt: number; variants: AdminCatalogVari
  */
 export function AdminCatalogPanel({ user }: { user: User }) {
   const [query, set_query] = useState("")
+  const [selection, set_selection] = useState<EditSelection | null>(null)
   const [page, set_page] = useState(1)
   const [attempt, set_attempt] = useState(0)
   const [response, set_response] = useState<CatalogResponse | null>(null)
@@ -108,7 +111,7 @@ export function AdminCatalogPanel({ user }: { user: User }) {
               </Alert>
             </CardContent>
           ) : page_data && total > 0 ? (
-            <AdminCatalogTable variants={page_data.variants} />
+            <AdminCatalogTable variants={page_data.variants} on_edit={set_selection} />
           ) : (
             <div className="flex flex-col items-center gap-2 px-5 py-10 text-center sm:py-12">
               <div className="rounded-xl bg-muted p-3 text-muted-foreground">
@@ -122,6 +125,9 @@ export function AdminCatalogPanel({ user }: { user: User }) {
           )}
         </div>
       </Card>
+      <ProductChangeHistory user={user} />
+      {selection && <ProductEditor user={user} selection={selection} on_close={() => { set_selection(null); set_attempt((a) => a + 1) }}
+        on_saved={() => { set_selection(null); set_attempt((a) => a + 1) }} />}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { algolia_indices, search_client } from "@/lib/algolia/algolia"
+import { algolia_indices, search_client, write_api_key } from "@/lib/algolia/algolia"
 import { get_indexed_account_identities } from "@/lib/auth/accountIndex"
 import type { User } from "@/lib/auth/types"
 import { parse_orders_data } from "@/lib/orders/orders"
@@ -63,13 +63,12 @@ export function can_index_order(order: OrderDetails): boolean {
 export async function save_indexed_order(order: OrderDetails): Promise<void> {
   const indexName = algolia_indices.orders
   const app_id = import.meta.env.VITE_ALGOLIA_APPLICATION_ID
-  const write_key = import.meta.env.VITE_ALGOLIA_ORDERS_WRITE_API_KEY
-  if (!indexName || !app_id || !write_key) throw new Error("El guardado de pedidos no está configurado.")
+  if (!indexName || !app_id || !write_api_key) throw new Error("El guardado de pedidos no está configurado.")
   const body = to_order_index_record(order)
   if (get_record_bytes(body) > max_order_record_bytes) throw new Error("El pedido supera el tamaño permitido.")
   if (!orders_writer) {
     const { algoliasearch } = await import("algoliasearch")
-    orders_writer = algoliasearch(app_id, write_key)
+    orders_writer = algoliasearch(app_id, write_api_key)
   }
   const { taskID } = await orders_writer.addOrUpdateObject({ indexName, objectID: body.objectID, body })
   if (!is_non_negative_integer(taskID)) throw new Error("Algolia no confirmó la escritura del pedido.")
@@ -91,13 +90,9 @@ export async function get_indexed_orders(owner_id: string, is_admin: boolean): P
   let page = 0
   let pages: number
   do {
-    const { data: { results } } = await search_client.searchWithHTTPInfo<OrderIndexRecord>({
-      requests: [{
-        indexName, query: "", filters, page, hitsPerPage: 100, distinct: false,
-        attributesToHighlight: [], attributesToSnippet: [],
-      }],
+    const { results: [result] } = await search_client.search<OrderIndexRecord>({
+      requests: [{ indexName, filters, page, hitsPerPage: 100 }],
     })
-    const result = results[0]
     if (!result || !("hits" in result) || !Array.isArray(result.hits) || !is_non_negative_integer(result.nbPages)) {
       throw new Error("No pudimos consultar los pedidos.")
     }
@@ -142,10 +137,11 @@ export async function get_indexed_admin_order(user: User | null, order_id: strin
   const indexName = algolia_indices.orders
   if (!indexName) throw new Error("La consulta de pedidos no está configurada.")
 
-  const { data: { results: [result] } } = await search_client.searchWithHTTPInfo<OrderIndexRecord>({
+  const { results: [result] } = await search_client.search<OrderIndexRecord>({
     requests: [{
-      indexName, query: "", filters: `objectID:${get_filter_value(order_id)}`, hitsPerPage: 1, distinct: false,
-      analytics: false, attributesToHighlight: [], attributesToSnippet: [],
+      indexName,
+      filters: `objectID:${get_filter_value(order_id)}`,
+      hitsPerPage: 1,
     }],
   })
   if (!result || !("hits" in result) || !Array.isArray(result.hits)) throw new Error("No pudimos consultar el pedido.")

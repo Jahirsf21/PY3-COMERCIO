@@ -22,7 +22,6 @@ export async function get_product_variants(product_id: string, channel: SalesCha
   const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
       indexName: get_product_indices(channel).main,
-      query: "",
       filters: `product_id:${get_filter_value(product_id)}`,
       distinct: false,
       hitsPerPage: 50,
@@ -48,7 +47,6 @@ export async function get_products_by_variants(variants: { product_id: string; s
   const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
       indexName: get_product_indices(channel).main,
-      query: "",
       filters: product_filters.join(" OR "),
       distinct: false,
       hitsPerPage: 200,

@@ -1,4 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import type { EditSelection } from "@/features/admin/components/ProductEditor"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { AdminCatalogOffer, AdminCatalogVariant } from "@/lib/catalog/types"
 import { format_price } from "@/lib/shared/utils"
@@ -27,7 +29,7 @@ function VariantIdentity({ variant, with_heading = false }: { variant: AdminCata
  * @param props Oferta del canal.
  * @returns Precio unitario, descuento vigente y reglas de cantidad.
  */
-function ChannelOffer({ offer }: { offer: AdminCatalogOffer | null }) {
+function ChannelOffer({ offer, edit }: { offer: AdminCatalogOffer | null; edit: () => void }) {
   if (offer === null) {
     return (
       <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
@@ -62,6 +64,7 @@ function ChannelOffer({ offer }: { offer: AdminCatalogOffer | null }) {
           <dd className="font-medium">{conditions.step_quantity.toLocaleString("es-CR")}</dd>
         </div>
       </dl>
+      <Button variant="outline" size="sm" className="mt-2" onClick={edit}>Editar</Button>
     </>
   )
 }
@@ -71,7 +74,12 @@ function ChannelOffer({ offer }: { offer: AdminCatalogOffer | null }) {
  * @param props Variantes de la página actual.
  * @returns Comparación de precios y condiciones B2C y B2B.
  */
-export function AdminCatalogTable({ variants }: { variants: AdminCatalogVariant[] }) {
+export function AdminCatalogTable({ variants, on_edit }: { variants: AdminCatalogVariant[]; on_edit: (selection: EditSelection) => void }) {
+  /** Abre solo la oferta existente del canal. @param variant Variante. @param channel Canal. @returns Sin valor. */
+  function edit(variant: AdminCatalogVariant, channel: "b2c" | "b2b") {
+    const offer = variant.offers[channel]
+    if (offer) on_edit({ sku: variant.sku, channel, offer: { price: offer.price, ...offer.conditions } })
+  }
   return (
     <>
       <div className="hidden lg:block">
@@ -91,10 +99,10 @@ export function AdminCatalogTable({ variants }: { variants: AdminCatalogVariant[
                   <VariantIdentity variant={variant} />
                 </th>
                 <TableCell className="border-l px-4 py-3 align-top wrap-anywhere whitespace-normal">
-                  <ChannelOffer offer={variant.offers.b2c} />
+                  <ChannelOffer offer={variant.offers.b2c} edit={() => edit(variant, "b2c")} />
                 </TableCell>
                 <TableCell className="border-l px-4 py-3 align-top wrap-anywhere whitespace-normal">
-                  <ChannelOffer offer={variant.offers.b2b} />
+                  <ChannelOffer offer={variant.offers.b2b} edit={() => edit(variant, "b2b")} />
                 </TableCell>
               </TableRow>
             ))}
@@ -110,11 +118,11 @@ export function AdminCatalogTable({ variants }: { variants: AdminCatalogVariant[
                 <div className="grid grid-cols-2 divide-x rounded-lg border bg-muted/35">
                   <div className="min-w-0 space-y-1 p-2 wrap-anywhere sm:p-3">
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground">B2C</h4>
-                    <ChannelOffer offer={variant.offers.b2c} />
+                    <ChannelOffer offer={variant.offers.b2c} edit={() => edit(variant, "b2c")} />
                   </div>
                   <div className="min-w-0 space-y-1 p-2 wrap-anywhere sm:p-3">
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground">B2B</h4>
-                    <ChannelOffer offer={variant.offers.b2b} />
+                    <ChannelOffer offer={variant.offers.b2b} edit={() => edit(variant, "b2b")} />
                   </div>
                 </div>
               </CardContent>

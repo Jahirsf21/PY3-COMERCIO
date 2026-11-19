@@ -3,6 +3,7 @@ import type { SalesChannel } from "@/lib/channel/types"
 
 const app_id = import.meta.env.VITE_ALGOLIA_APPLICATION_ID;
 const search_api_key = import.meta.env.VITE_ALGOLIA_SEARCH_API_KEY;
+export const write_api_key = import.meta.env.VITE_ALGOLIA_WRITE_API_KEY
 
 /**
  * Índices de productos de un canal: el principal y sus réplicas ordenadas por precio.

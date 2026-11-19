@@ -1,13 +1,13 @@
-import { get_product_indices, search_client } from "@/lib/algolia/algolia"
+import { get_product_indices } from "@/lib/algolia/algolia"
 import type { User } from "@/lib/auth/types"
-import { get_complete_catalog_hits } from "@/lib/catalog/adminCatalog"
+import { read_admin_variants } from "@/lib/catalog/adminCatalog"
 import type { SalesChannel } from "@/lib/channel/types"
 import type { ProductImage } from "@/lib/catalog/types"
 import { is_non_negative_integer, is_nonempty_string, is_record, is_valid_image } from "@/lib/shared/utils"
 import { get_store_groups } from "@/lib/stores/stores"
 
 /** Existencias de una variante por identificador de sucursal. */
-export type InventoryRow = { sku: string; title: string; image: ProductImage | null; quantities: Map<string, number> }
+export type InventoryRow = { sku: string; title: string; image: ProductImage | null; quantities: Map<string, number>; sizes: Map<string, Record<string, number>> }
 
 export const inventory_stores = get_store_groups().flatMap((group) => group.stores)
 
@@ -24,18 +24,22 @@ export function get_inventory_rows(hits: unknown[]): InventoryRow[] {
     if (!is_record(hit) || !is_nonempty_string(hit.sku) || !is_nonempty_string(hit.title) ||
       !Array.isArray(hit.stock_by_location) || rows.has(hit.sku)) throw new Error(error)
     const quantities = new Map<string, number>()
+    const sizes = new Map<string, Record<string, number>>()
     for (const location of hit.stock_by_location) {
       if (!is_record(location) || !is_record(location.sizes) || Array.isArray(location.sizes)) throw new Error(error)
       const store = inventory_stores.find((item) => item.province === location.province && item.locale_name === location.locale_name)
       if (!store || quantities.has(store.id)) throw new Error(error)
       let total = 0
-      for (const size of Object.values(location.sizes)) {
+      const entries: [string, number][] = []
+      for (const [name, size] of Object.entries(location.sizes)) {
         if (!is_record(size) || !is_non_negative_integer(size.stock_quantity)) throw new Error(error)
+        entries.push([name, size.stock_quantity])
         total += size.stock_quantity
       }
       quantities.set(store.id, total)
+      sizes.set(store.id, Object.fromEntries(entries))
     }
-    rows.set(hit.sku, { sku: hit.sku, title: hit.title, image: is_valid_image(hit.image) ? hit.image : null, quantities })
+    rows.set(hit.sku, { sku: hit.sku, title: hit.title, image: is_valid_image(hit.image) ? hit.image : null, quantities, sizes })
   }
   return [...rows.values()].sort((a, b) => a.title.localeCompare(b.title, "es") || a.sku.localeCompare(b.sku, "es"))
 }
@@ -51,9 +55,6 @@ export async function get_admin_inventory(user: User | null, channel: SalesChann
   if (user?.role !== "ADMIN") throw new Error("Solo el administrador puede consultar este inventario.")
   const indexName = get_product_indices(channel).main
   if (!indexName) throw new Error("El inventario no está configurado.")
-  const response = await search_client.searchWithHTTPInfo({ requests: [{
-    indexName, query: "", distinct: false, hitsPerPage: 1000, analytics: false, enableRules: false,
-    attributesToRetrieve: ["title", "sku", "image", "stock_by_location"], attributesToHighlight: [], attributesToSnippet: [],
-  }] })
-  return get_inventory_rows(get_complete_catalog_hits(response.data.results[0]))
+  const [hits] = await read_admin_variants([indexName], ["title", "sku", "image", "stock_by_location"])
+  return get_inventory_rows(hits)
 }
