@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { ChartColumnIcon, ClipboardListIcon, ExternalLinkIcon, LogOutIcon, PackageIcon } from "lucide-react"
+import { ChartColumnIcon, ClipboardListIcon, ExternalLinkIcon, LogOutIcon, PackageIcon, WarehouseIcon } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,7 @@ const logo_url = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}icono.svg`
 const admin_sections = [
   { label: "Órdenes", to: routes.admin_orders, icon: ClipboardListIcon },
   { label: "Productos", to: routes.admin_products, icon: PackageIcon },
+  { label: "Inventario", to: routes.admin_inventory, icon: WarehouseIcon },
   { label: "Analytics", to: routes.admin_analytics, icon: ChartColumnIcon },
 ]
 const item_class = "h-10 cursor-pointer gap-3 text-sidebar-foreground/75 data-active:[&_svg]:text-sidebar-primary"

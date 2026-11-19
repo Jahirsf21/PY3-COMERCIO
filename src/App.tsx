@@ -47,6 +47,7 @@ function App() {
           <Route index element={<Navigate to={routes.admin_orders} replace />} />
           <Route path={routes.admin_orders} element={null} />
           <Route path={routes.admin_products} element={null} />
+          <Route path={routes.admin_inventory} element={null} />
           <Route path={routes.admin_analytics} element={null} />
           <Route path={routes.admin_order} element={user ? <AdminOrderDetailPage key={user.id} user={user} /> : null} />
           <Route path="*" element={<Navigate to={routes.admin_orders} replace />} />
