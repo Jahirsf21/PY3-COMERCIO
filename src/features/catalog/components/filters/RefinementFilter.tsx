@@ -25,7 +25,7 @@ export function RefinementFilter({ attribute, transformItems }: RefinementFilter
         <Label
           key={item.value}
           htmlFor={`${id}-${item.value}`}
-          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 leading-snug transition-colors duration-150 hover:bg-muted focus-within:bg-muted focus-within:inset-ring-2 focus-within:inset-ring-ring active:bg-accent `has-data-checked:bg-accent motion-reduce:transition-none"
+          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 leading-snug transition-colors duration-150 hover:bg-muted focus-within:bg-muted focus-within:inset-ring-2 focus-within:inset-ring-ring active:bg-accent has-data-checked:bg-accent motion-reduce:transition-none"
         >
           <Checkbox
             id={`${id}-${item.value}`}

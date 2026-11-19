@@ -6,18 +6,20 @@ import { Sheet, SheetTrigger } from "@/components/ui/sheet"
 import { CartPreview } from "@/features/cart/components/CartPreview"
 import { useCart } from "@/lib/cart/cartContext"
 import { useAuth } from "@/lib/auth/authContext"
+import { routes } from "@/lib/navigation/routes"
+
+const cart_control_class = "relative size-10 shrink-0 cursor-pointer"
 
 export function CartIndicator() {
   const { user } = useAuth()
   const { total_items: totalUnits } = useCart()
   const [open, setOpen] = useState(false)
-  const isCartPage = useMatch("/carrito") !== null
+  const isCartPage = useMatch(routes.cart) !== null
 
   const indicator = (
     <>
       <ShoppingCartIcon aria-hidden="true" className="size-5" />
-      <span className="hidden sm:inline">Carrito</span>
-      <span aria-live="polite" aria-atomic="true" className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground">
+      <span aria-live="polite" aria-atomic="true" className="pointer-events-none absolute -end-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-sm bg-primary px-1 text-[11px] font-bold tabular-nums text-primary-foreground">
         {totalUnits}
       </span>
     </>
@@ -28,10 +30,10 @@ export function CartIndicator() {
   if (isCartPage) {
     return (
       <Link
-        to="/carrito"
+        to={routes.cart}
         aria-current="page"
         aria-label={`Carrito: ${totalUnits} ${totalUnits === 1 ? "unidad" : "unidades"}`}
-        className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={`${cart_control_class} inline-flex items-center justify-center rounded-lg border border-border bg-background transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
       >
         {indicator}
       </Link>
@@ -42,7 +44,7 @@ export function CartIndicator() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label={`Vista previa del carrito: ${totalUnits} ${totalUnits === 1 ? "unidad" : "unidades"}`}
-        render={<Button type="button" variant="outline" className="h-10 cursor-pointer gap-2 px-3" />}
+        render={<Button type="button" variant="outline" size="icon" className={cart_control_class} />}
       >
         {indicator}
       </SheetTrigger>

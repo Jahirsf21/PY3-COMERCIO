@@ -17,11 +17,11 @@ export function ProductImagePreview({ image, title }: ProductImagePreviewProps) 
           alt={image.alt}
           loading="lazy"
           decoding="async"
-          className="aspect-square w-full rounded-md object-cover sm:aspect-auto sm:h-40"
+          className="aspect-square w-full rounded-xl bg-muted object-cover sm:aspect-auto sm:h-40"
         />
         <DialogTrigger
           aria-label={`Ampliar foto de ${title}`}
-          className="absolute right-2 bottom-2 flex min-h-9 cursor-pointer items-center gap-1 rounded-md bg-background/95 px-2 py-1 text-xs text-foreground shadow-sm outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-2 bottom-2 flex min-h-9 cursor-pointer items-center gap-1 rounded-lg bg-background/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ExpandIcon aria-hidden="true" className="size-3" />
           Ampliar foto

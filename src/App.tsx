@@ -10,13 +10,14 @@ import ProductDetailPage from "@/features/product-detail/ProductDetailPage"
 import PoliciesPage from "@/features/policies/PoliciesPage"
 import LoginPage from "@/features/auth/LoginPage"
 import AnalyticsPage from "@/features/analytics/AnalyticsPage"
-import AdminDashboardPage from "@/features/admin/AdminDashboardPage"
+import AdminLayout from "@/features/admin/AdminLayout"
 import AdminOrderDetailPage from "@/features/admin/AdminOrderDetailPage"
 import { useAuth } from "@/lib/auth/authContext"
 import { useCart } from "@/lib/cart/cartContext"
 import { StoreCartNoticeDialog } from "@/features/stores/StoreCartNoticeDialog"
 import { ShopFooter } from "@/components/shop-footer"
 import "@/App.css"
+import { routes } from "@/lib/navigation/routes"
 
 
 function App() {
@@ -25,8 +26,9 @@ function App() {
   const location = useLocation()
   const { pathname } = location
   const is_admin = user?.role === "ADMIN"
+  const is_admin_panel = pathname === routes.admin || pathname.startsWith(`${routes.admin}/`)
   const purchase_redirect = is_admin
-    ? <Navigate to="/" replace />
+    ? <Navigate to={routes.catalog} replace />
     : null
 
   useLayoutEffect(() => {
@@ -36,38 +38,38 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Catalog />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path={routes.catalog} element={<Catalog />} />
+        <Route path={routes.login} element={<LoginPage />} />
         <Route
-          path="/admin"
-          element={
-            user?.role !== "ADMIN"
-              ? <Navigate to="/" replace />
-              : <AdminDashboardPage key={user.id} user={user} />
-          }
+          path={routes.admin}
+          element={user?.role === "ADMIN" ? <AdminLayout key={user.id} user={user} /> : <Navigate to={routes.catalog} replace />}
+        >
+          <Route index element={<Navigate to={routes.admin_orders} replace />} />
+          <Route path={routes.admin_orders} element={null} />
+          <Route path={routes.admin_products} element={null} />
+          <Route path={routes.admin_analytics} element={null} />
+          <Route path={routes.admin_order} element={user ? <AdminOrderDetailPage key={user.id} user={user} /> : null} />
+          <Route path="*" element={<Navigate to={routes.admin_orders} replace />} />
+        </Route>
+        <Route path={routes.cart} element={purchase_redirect ?? <CartPage />} />
+        <Route
+          path={routes.checkout}
+          element={purchase_redirect ?? (cart.length === 0 ? <Navigate to={routes.cart} replace /> : <Checkout />)}
         />
+        <Route path={routes.order_payment} element={purchase_redirect ?? <PaymentPage />} />
         <Route
-          path="/admin/pedido/:orderId"
-          element={user?.role === "ADMIN" ? <AdminOrderDetailPage key={user.id} user={user} /> : <Navigate to="/" replace />}
-        />
-        <Route path="/carrito" element={purchase_redirect ?? <CartPage />} />
-        <Route
-          path="/checkout"
-          element={purchase_redirect ?? (cart.length === 0 ? <Navigate to="/carrito" replace /> : <Checkout />)}
-        />
-        <Route path="/pedido/:orderId/pago" element={purchase_redirect ?? <PaymentPage />} />
-        <Route
-          path="/pedidos"
-          element={!user ? <Navigate to="/login" replace state={{ from: location }} />
-            : user.role === "ADMIN" ? <Navigate to="/admin" replace />
+          path={routes.orders}
+          element={!user ? <Navigate to={routes.login} replace state={{ from: location }} />
+            : user.role === "ADMIN" ? <Navigate to={routes.admin_orders} replace />
               : <OrdersPage />}
         />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/politicas-y-ayuda" element={<PoliciesPage />} />
-        <Route path="/pedido/:orderId" element={<OrderDetailPage />} />
-        <Route path="/producto/:productId" element={<ProductDetailPage />} />
+        <Route path={routes.analytics} element={<AnalyticsPage />} />
+        <Route path={routes.policies} element={<PoliciesPage />} />
+        <Route path={routes.order} element={<OrderDetailPage />} />
+        <Route path={routes.product} element={<ProductDetailPage />} />
+        <Route path="*" element={<Navigate to={routes.catalog} replace />} />
       </Routes>
-      {pathname !== "/login" && <ShopFooter />}
+      {pathname !== routes.login && !is_admin_panel && <ShopFooter />}
       <StoreCartNoticeDialog />
     </>
   )

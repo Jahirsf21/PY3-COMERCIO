@@ -15,6 +15,7 @@ import { cn, format_price } from "@/lib/shared/utils"
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 import { get_available_quantity_text, get_store_unavailable_notice } from "@/lib/stores/stores"
+import { product_path } from "@/lib/navigation/routes"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const { user } = useAuth()
@@ -139,7 +140,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                     <p className="text-xs uppercase text-muted-foreground">{preview.brand}</p>
                     <p className="font-medium leading-snug">{preview.title}</p>
                     <Link
-                      to={`/producto/${encodeURIComponent(preview.product_id)}?${detailParams}`}
+                      to={`${product_path(preview.product_id)}?${detailParams}`}
                       aria-disabled={isSubmitting}
                       tabIndex={isSubmitting ? -1 : undefined}
                       className="inline-block rounded-sm text-sm underline underline-offset-4 outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -187,7 +188,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                             "cursor-pointer overflow-hidden rounded-lg border-2 bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
                             variant.sku === selectedVariant?.sku
                               ? "border-foreground"
-                              : "border-transparent hover:border-ring",
+                              : "border-transparent hover:opacity-80",
                           )}
                           onClick={() => {
                             setSelectedSku(variant.sku)
@@ -217,7 +218,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                             aria-label={isAvailable ? size : `${size} · No disponible`}
                             disabled={!isAvailable || isSubmitting}
                             className={cn(
-                              "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:border-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+                              "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
                               selectedSize === size
                                 ? "border-foreground bg-foreground text-background"
                                 : "border-input",

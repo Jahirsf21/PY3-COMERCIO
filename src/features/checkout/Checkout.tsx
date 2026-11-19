@@ -16,6 +16,7 @@ import { get_cart_store_availability, select_best_cart_store } from "@/lib/store
 import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
 import type { StoreCartAvailability, StoreCartProduct } from "@/lib/stores/types"
+import { order_payment_path } from "@/lib/navigation/routes"
 
 export default function Checkout() {
   const { owner_id: user_id, track_event } = useAnalytics()
@@ -97,7 +98,7 @@ export default function Checkout() {
       clear_stored_checkout_form_data(user_id)
       startTransition(() => {
         clear_cart()
-        navigate(`/pedido/${encodeURIComponent(order.id)}/pago`, { replace: true })
+        navigate(order_payment_path(order.id), { replace: true })
       })
       toast.add({ title: `Orden #${order.order_number} generada`, description: `Total: ${format_price(order.total, order.currency)}`, type: "success" })
     } catch {
@@ -114,7 +115,7 @@ export default function Checkout() {
     <div className="min-h-dvh bg-background">
       <ShopHeader sticky />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
-        <h1 className="text-2xl font-semibold">Datos y resumen de la orden de compra</h1>
+        <h1 className="text-2xl font-bold tracking-tight uppercase sm:text-3xl">Datos y resumen de la orden de compra</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Completa tus datos y revisa los productos de tu pedido.
         </p>

@@ -159,7 +159,7 @@ export default function ProductDetailPage() {
                     "aspect-square shrink-0 cursor-pointer overflow-hidden rounded-md border-2 bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                     index === selectedImageIndex
                       ? "border-foreground"
-                      : "border-transparent hover:border-ring",
+                      : "border-transparent hover:opacity-80",
                   )}
                   onClick={() => setSelection({
                     sku: selectedVariant.sku,
@@ -176,7 +176,7 @@ export default function ProductDetailPage() {
               ))}
             </div>
 
-            <figure className="aspect-square min-w-0 overflow-hidden rounded-lg bg-muted">
+            <figure className="aspect-square min-w-0 overflow-hidden rounded-2xl bg-muted">
               <img
                 src={selectedImage.url}
                 alt={selectedImage.alt}
@@ -191,7 +191,7 @@ export default function ProductDetailPage() {
               <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                 {selectedVariant.brand}
               </p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+              <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
                 {selectedVariant.title}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -199,7 +199,7 @@ export default function ProductDetailPage() {
               </p>
               <div className="mt-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xl font-semibold">
+                  <p className="font-heading text-2xl font-bold">
                     {format_price(currentPrice, selectedVariant.currency)}
                   </p>
                   {discount && (
@@ -240,7 +240,7 @@ export default function ProductDetailPage() {
                       "cursor-pointer overflow-hidden rounded-lg border-2 bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                       variant.sku === selectedVariant.sku
                         ? "border-foreground"
-                        : "border-transparent hover:border-ring",
+                        : "border-transparent hover:opacity-80",
                     )}
                     onClick={() => {
                       setSelection({ sku: variant.sku, imageIndex: 0 });
@@ -273,10 +273,10 @@ export default function ProductDetailPage() {
                     aria-pressed={selectedSize === size}
                     disabled={isSubmitting}
                     className={cn(
-                      "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:border-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                      "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                       selectedSize === size
                         ? "border-foreground bg-foreground text-background"
-                        : "border-input",
+                        : "border-border",
                     )}
                     onClick={() => {
                       setSelection({ sku: selectedVariant.sku, imageIndex: selectedImageIndex });
@@ -291,7 +291,7 @@ export default function ProductDetailPage() {
 
             <div className={cn(
               "flex items-center gap-3 rounded-lg border p-4",
-              (!selectedSize || isAvailable) && !storeNotice ? "border-input" : "border-destructive/40 bg-destructive/5",
+              (!selectedSize || isAvailable) && !storeNotice ? "border-border" : "border-destructive/40 bg-destructive/5",
             )}>
               <PackageCheckIcon aria-hidden="true" className="size-5 shrink-0" />
               <div>
@@ -319,16 +319,16 @@ export default function ProductDetailPage() {
           </aside>
         </div>
 
-        <section className="mt-10 border-t border-input pt-8 lg:mt-14 lg:pt-10">
+        <section className="mt-10 border-t border-border pt-8 lg:mt-14 lg:pt-10">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] xl:gap-16">
             <div>
-              <h2 className="text-2xl font-semibold">Descripción</h2>
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Descripción</h2>
               <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
                 {selectedVariant.description}
               </p>
             </div>
             <div>
-              <h2 className="text-2xl font-semibold">Especificaciones</h2>
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Especificaciones</h2>
               <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
               <DetailRow label="Color" value={selectedVariant.facets.color} />
               <DetailRow label="SKU" value={selectedVariant.sku} />
@@ -352,7 +352,7 @@ export default function ProductDetailPage() {
           </div>
 
           {selectedSize && stockByLocation.length > 0 && (
-            <div className="mt-8 border-t border-input pt-8">
+            <div className="mt-8 border-t border-border pt-8">
               <h2 className="flex items-center gap-2 text-xl font-semibold">
                 <MapPinIcon aria-hidden="true" className="size-5" />
                 Disponibilidad por tienda
@@ -385,7 +385,7 @@ export default function ProductDetailPage() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[7rem_1fr] gap-3 border-b border-input/70 pb-3">
+    <div className="grid grid-cols-[7rem_1fr] gap-3 border-b border-border/70 pb-3">
       <dt className="font-medium">{label}</dt>
       <dd className="text-muted-foreground">{value}</dd>
     </div>

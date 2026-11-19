@@ -49,7 +49,7 @@ export function OrderProducts({ order }: OrderProductsProps) {
       </div>
       <ul id="order-products" aria-label="Productos del pedido" className="space-y-4">
         {page_items.map((item) => (
-          <li key={item.id} className="@container min-w-0 rounded-xl border border-input bg-card p-4">
+          <li key={item.id} className="@container min-w-0 rounded-2xl border border-border bg-card p-4">
             <div className="grid gap-4 @sm:grid-cols-[96px_minmax(0,1fr)]">
               <img src={item.image.url} alt={item.image.alt} className="size-24 rounded-lg bg-muted object-contain" loading="lazy" />
               <div className="min-w-0">

@@ -14,7 +14,7 @@ type NoticeDialogProps = {
   on_retry?: () => boolean
 }
 
-const action_class = "h-11 cursor-pointer rounded-xl px-4 focus-visible:border-foreground/60 focus-visible:ring-foreground/25 motion-reduce:transition-none sm:min-w-28"
+const action_class = "h-11 w-full cursor-pointer px-5 font-semibold motion-reduce:transition-none sm:flex-1"
 
 /**
  * Presenta un aviso con una acción de cierre y, si está disponible, un reintento.
@@ -37,23 +37,21 @@ export function NoticeDialog({ open, context_label, title, message, tone = "erro
     <Dialog open={open} onOpenChange={on_open_change}>
       <DialogContent
         showCloseButton={false}
-        className="block max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl p-0 shadow-2xl motion-reduce:animate-none sm:max-w-md"
-        overlayClassName="bg-black/40 motion-reduce:animate-none"
+        className="block max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border bg-card p-0 shadow-2xl motion-reduce:animate-none sm:max-w-md"
+        overlayClassName="bg-black/50 motion-reduce:animate-none"
       >
-        <DialogHeader className={cn("gap-0 bg-linear-to-br via-transparent to-transparent p-5 sm:px-7 sm:py-6", is_warning ? "from-amber-500/10" : "from-destructive/8")}>
-          <div className="mb-4 flex items-center gap-3">
-            <span className={cn(
-              "flex size-11 shrink-0 items-center justify-center rounded-2xl border",
-              is_warning ? "border-amber-500/20 bg-amber-500/12 text-amber-700 dark:text-amber-400" : "border-destructive/15 bg-destructive/10 text-destructive",
-            )}>
-              <NoticeIcon aria-hidden="true" className="size-5" />
-            </span>
-            <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{context_label}</span>
-          </div>
-          <DialogTitle className="text-xl leading-tight font-semibold tracking-tight wrap-anywhere sm:text-2xl">{title}</DialogTitle>
+        <DialogHeader className="items-center gap-0 px-6 pt-7 pb-5 text-center sm:px-8">
+          <span className={cn(
+            "mb-4 flex size-14 shrink-0 items-center justify-center rounded-lg",
+            is_warning ? "bg-amber-500/12 text-amber-700 dark:text-amber-400" : "bg-destructive/10 text-destructive",
+          )}>
+            <NoticeIcon aria-hidden="true" className="size-7" />
+          </span>
+          <span className="mb-2 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{context_label}</span>
+          <DialogTitle className="text-xl leading-tight font-bold tracking-tight wrap-anywhere sm:text-2xl">{title}</DialogTitle>
           <DialogDescription className="mt-2 leading-relaxed wrap-anywhere sm:text-base">{message}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="m-0 flex-col rounded-none bg-muted/50 px-5 sm:px-7">
+        <DialogFooter className="m-0 flex-col-reverse gap-2 rounded-none border-t-0 bg-transparent px-6 pt-0 pb-6 sm:flex-row sm:px-8">
           <DialogClose render={<Button type="button" variant={on_retry ? "outline" : "default"} className={action_class} />}>
             {on_retry ? "Cerrar" : "Aceptar"}
           </DialogClose>

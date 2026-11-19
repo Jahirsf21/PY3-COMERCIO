@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AdminOrderFilters } from "@/features/admin/components/AdminOrderFilters"
+import { AdminOrderStatsCards } from "@/features/admin/components/AdminOrderStatsCards"
 import { AdminOrdersTable } from "@/features/admin/components/AdminOrdersTable"
 import { AdminPagination } from "@/features/admin/components/AdminPagination"
 import type { User } from "@/lib/auth/types"
@@ -58,6 +59,7 @@ export function AdminOrdersPanel({ user }: { user: User }) {
 
   return (
     <div className="space-y-4">
+      <AdminOrderStatsCards user={user} />
       <AdminOrderFilters
         filters={filters}
         has_filters={has_filters}

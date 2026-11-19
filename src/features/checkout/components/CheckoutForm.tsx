@@ -230,7 +230,7 @@ export function CheckoutForm({ formData, onChange, onSubmit, isGeneratingOrder, 
       onSubmit={handleSubmit}
       aria-busy={isGeneratingOrder}
       aria-labelledby="checkout-form-title"
-      className="min-w-0 rounded-xl border border-input bg-card p-5 sm:p-6"
+      className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6"
     >
       <h2 id="checkout-form-title" className="text-lg font-semibold">1. Datos del cliente y entrega</h2>
       <fieldset disabled={isGeneratingOrder} className="min-w-0">
