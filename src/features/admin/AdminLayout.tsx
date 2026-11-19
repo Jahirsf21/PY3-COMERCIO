@@ -4,6 +4,7 @@ import { ShopFooter } from "@/components/shop-footer"
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AdminCatalogPanel } from "@/features/admin/components/AdminCatalogPanel"
+import { AdminInventoryPanel } from "@/features/admin/components/AdminInventoryPanel"
 import { AdminOrdersPanel } from "@/features/admin/components/AdminOrdersPanel"
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar"
 import { AnalyticsOverview } from "@/features/analytics/AnalyticsPage"
@@ -11,11 +12,12 @@ import type { User } from "@/lib/auth/types"
 import { routes } from "@/lib/navigation/routes"
 
 /** Sección del panel que corresponde a la ruta actual. */
-type AdminSection = "orders" | "products" | "analytics" | "order"
+type AdminSection = "orders" | "products" | "inventory" | "analytics" | "order"
 
 const section_titles: Record<AdminSection, string> = {
   orders: "Órdenes",
   products: "Productos",
+  inventory: "Inventario",
   analytics: "Analytics",
   order: "Detalle de la orden",
 }
@@ -27,6 +29,7 @@ const section_titles: Record<AdminSection, string> = {
  */
 function get_admin_section(pathname: string): AdminSection {
   if (pathname === routes.admin_products) return "products"
+  if (pathname === routes.admin_inventory) return "inventory"
   if (pathname === routes.admin_analytics) return "analytics"
   if (pathname.startsWith(`${routes.admin_orders}/`)) return "order"
   return "orders"
@@ -79,6 +82,10 @@ export default function AdminLayout({ user }: { user: User }) {
             </div>
           )}
           {section === "analytics" && <AnalyticsOverview />}
+          {section === "inventory" && <>
+            <SectionHeading title="Inventario" description="Consulta las unidades de cada variante por sucursal y canal." />
+            <AdminInventoryPanel user={user} />
+          </>}
           <Outlet />
         </div>
         <ShopFooter />

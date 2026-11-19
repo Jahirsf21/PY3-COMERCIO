@@ -81,7 +81,7 @@ function parse_admin_index_variant(hit: unknown, now: number): AdminIndexVariant
  * @returns Registros de ese canal, incluso si está vacío.
  * @throws Si la respuesta es inválida, parcial o supera el límite de búsqueda.
  */
-function get_complete_catalog_hits(result: unknown): unknown[] {
+export function get_complete_catalog_hits(result: unknown): unknown[] {
   if (!is_record(result) || !Array.isArray(result.hits) ||
     !is_non_negative_integer(result.nbHits) || !is_non_negative_integer(result.nbPages)) {
     throw new Error(admin_catalog_read_error)
