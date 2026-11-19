@@ -73,7 +73,6 @@ async function find_user_records(username: string): Promise<UserRecord[]> {
   const { data: { results } } = await search_client.searchWithHTTPInfo<UserRecord>({
     requests: [{
       indexName: algolia_indices.users,
-      query: "",
       filters: `username:${get_filter_value(username)}`,
       hitsPerPage: 1,
     }],

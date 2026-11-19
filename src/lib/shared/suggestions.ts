@@ -37,7 +37,6 @@ export async function get_suggestions(category_names: string[], product_ids: str
     const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
       requests: [{
         indexName: get_product_indices(channel).main,
-        query: "",
         filters: suggestion_filters,
         hitsPerPage: 20,
         page: current_page,

@@ -111,10 +111,7 @@ async function read_order_summary_page(index_name: string, query: string, page: 
       page: page - 1,
       hitsPerPage: page_size,
       distinct: false,
-      analytics: false,
       attributesToRetrieve: order_summary_attributes,
-      attributesToHighlight: [],
-      attributesToSnippet: [],
     }],
   }).catch(() => { throw new Error(admin_orders_read_error) })
 
@@ -193,13 +190,9 @@ export async function get_admin_order_stats(user: User | null): Promise<AdminOrd
   const response = await search_client.searchWithHTTPInfo({
     requests: [{
       indexName: index_name,
-      query: "",
       hitsPerPage: admin_order_stats_limit,
       distinct: false,
-      analytics: false,
       attributesToRetrieve: order_stats_attributes,
-      attributesToHighlight: [],
-      attributesToSnippet: [],
     }],
   }).catch(() => { throw new Error(admin_orders_read_error) })
 

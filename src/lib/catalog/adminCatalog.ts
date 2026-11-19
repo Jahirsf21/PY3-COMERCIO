@@ -81,7 +81,7 @@ function parse_admin_index_variant(hit: unknown, now: number): AdminIndexVariant
  * @returns Registros de ese canal, incluso si está vacío.
  * @throws Si la respuesta es inválida, parcial o supera el límite de búsqueda.
  */
-export function get_complete_catalog_hits(result: unknown): unknown[] {
+function get_complete_catalog_hits(result: unknown): unknown[] {
   if (!is_record(result) || !Array.isArray(result.hits) ||
     !is_non_negative_integer(result.nbHits) || !is_non_negative_integer(result.nbPages)) {
     throw new Error(admin_catalog_read_error)
@@ -91,6 +91,26 @@ export function get_complete_catalog_hits(result: unknown): unknown[] {
     throw new Error(admin_catalog_incomplete_error)
   }
   return result.hits
+}
+
+/**
+ * Lee las variantes sin agrupar en los índices indicados.
+ * @param indices Índices principales a consultar.
+ * @param attributes Campos necesarios para la vista.
+ * @returns Una lista completa de registros por índice, en el orden solicitado.
+ * @throws Si algún resultado falta o está incompleto.
+ */
+export async function read_admin_variants(indices: string[], attributes: string[]): Promise<unknown[][]> {
+  const { results } = await search_client.search({
+    requests: indices.map((indexName) => ({
+      indexName,
+      attributesToRetrieve: attributes,
+      hitsPerPage: admin_catalog_index_limit,
+      distinct: false,
+    })),
+  }).catch(() => { throw new Error(admin_catalog_read_error) })
+  if (!Array.isArray(results) || results.length !== indices.length) throw new Error(admin_catalog_read_error)
+  return results.map(get_complete_catalog_hits)
 }
 
 /**
@@ -106,27 +126,12 @@ export async function get_admin_catalog(user: User | null): Promise<AdminCatalog
     throw new Error("La consulta administrativa de productos no está configurada.")
   }
 
-  const response = await search_client.searchWithHTTPInfo({
-    requests: indices.map((index_name) => ({
-      indexName: index_name,
-      query: "",
-      hitsPerPage: admin_catalog_index_limit,
-      distinct: false,
-      analytics: false,
-      enableRules: false,
-      attributesToRetrieve: admin_catalog_attributes,
-      attributesToHighlight: [],
-      attributesToSnippet: [],
-    })),
-  }).catch(() => { throw new Error(admin_catalog_read_error) })
-
-  const results = response?.data?.results
-  if (!Array.isArray(results) || results.length !== admin_catalog_channels.length) throw new Error(admin_catalog_read_error)
+  const results = await read_admin_variants(indices, admin_catalog_attributes)
 
   const variants = new Map<string, AdminCatalogVariant>()
   const now = Date.now()
   for (const [index, channel] of admin_catalog_channels.entries()) {
-    for (const hit of get_complete_catalog_hits(results[index])) {
+    for (const hit of results[index]) {
       const { offer, ...variant } = parse_admin_index_variant(hit, now)
       const previous = variants.get(variant.sku)
       if (previous) {

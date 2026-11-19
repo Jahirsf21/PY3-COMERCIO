@@ -14,20 +14,15 @@ export async function get_indexed_account_identities(user: User | null, user_ids
   const ids = new Set(user_ids.filter(is_nonempty_string))
   if (user?.role !== "ADMIN" || !index_name || ids.size === 0) return accounts
 
-  const response = await search_client.searchWithHTTPInfo({
+  const response = await search_client.search({
     requests: [{
       indexName: index_name,
-      query: "",
       filters: [...ids].map((id) => `objectID:${get_filter_value(id)}`).join(" OR "),
       hitsPerPage: ids.size,
-      distinct: false,
-      analytics: false,
       attributesToRetrieve: ["username", "full_name"],
-      attributesToHighlight: [],
-      attributesToSnippet: [],
     }],
   }).catch(() => null)
-  const result: unknown = response?.data?.results?.[0]
+  const result: unknown = response?.results[0]
   if (!is_record(result) || !Array.isArray(result.hits)) return accounts
 
   for (const hit of result.hits) {
