@@ -10,8 +10,8 @@ import ProductDetailPage from "@/features/product-detail/ProductDetailPage"
 import PoliciesPage from "@/features/policies/PoliciesPage"
 import LoginPage from "@/features/auth/LoginPage"
 import AnalyticsPage from "@/features/analytics/AnalyticsPage"
+import AdminDashboardPage from "@/features/admin/AdminDashboardPage"
 import AdminOrderDetailPage from "@/features/admin/AdminOrderDetailPage"
-import AdminOrdersPage from "@/features/admin/AdminOrdersPage"
 import { useAuth } from "@/lib/auth/authContext"
 import { useCart } from "@/lib/cart/cartContext"
 import { StoreCartNoticeDialog } from "@/features/stores/StoreCartNoticeDialog"
@@ -43,7 +43,7 @@ function App() {
           element={
             user?.role !== "ADMIN"
               ? <Navigate to="/" replace />
-              : <AdminOrdersPage key={user.id} user={user} />
+              : <AdminDashboardPage key={user.id} user={user} />
           }
         />
         <Route

@@ -99,3 +99,24 @@ export type ProductSuggestionsResult = {
 
 /** Variante del catálogo con los metadatos de búsqueda de Algolia. */
 export type ProductHit = Hit<ProductRecord>
+
+/** Precio y condiciones de compra de un SKU en un canal. */
+export type AdminCatalogOffer = Pick<ProductRecord, "price" | "currency"> & {
+  unit_price: number
+  discount_percentage: number | null
+  conditions: Pick<ProductRecord, "min_order_quantity" | "max_order_quantity" | "step_quantity">
+}
+
+/** Variante con una oferta por canal, o null en el canal donde no se vende. */
+export type AdminCatalogVariant = Pick<ProductRecord, "sku" | "product_id" | "title" | "brand" | "image"> & {
+  color: ProductFacets["color"]
+  offers: Record<SalesChannel, AdminCatalogOffer | null>
+}
+
+/** Página de variantes que coinciden con una búsqueda en el panel. */
+export type AdminCatalogPage = {
+  variants: AdminCatalogVariant[]
+  current_page: number
+  total_pages: number
+  total_variants: number
+}
