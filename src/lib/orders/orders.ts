@@ -1,24 +1,29 @@
+import { parse_company } from "@/lib/auth/auth"
+import type { User } from "@/lib/auth/types"
 import type { BuyerInfo, DeliveryInfo, TermsAcceptance } from "@/lib/checkout/types"
-import type { OrderAvailability, OrderDetails, OrderItem, OrderPagination, OrderStatus, PrepareOrderInput, PrepareOrderResult, PreparedOrder, PreparedOrderItem } from "@/lib/orders/types"
+import type { OrderAvailability, OrderCustomer, OrderDetails, OrderItem, OrderPagination, OrderStatus, PrepareOrderInput, PrepareOrderResult, PreparedOrder, PreparedOrderItem } from "@/lib/orders/types"
 import type { Payment, PaymentResult } from "@/lib/payments/types"
-import { get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_item_subtotal, parse_cart_data } from "@/lib/cart/cart"
+import { get_cart_quantity_limits, get_cart_shipping_cost, get_cart_subtotal, get_cart_tax, get_item_subtotal, is_valid_cart_quantity, parse_cart_data } from "@/lib/cart/cart"
 import { get_cart_validation } from "@/lib/catalog/catalog"
+import { get_sales_channel } from "@/lib/channel/channel"
 import { validate_buyer_fields, validate_delivery_fields, validate_terms_acceptance } from "@/lib/checkout/checkout"
 import { get_store } from "@/lib/stores/stores"
-import { get_stored_json, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
+import { is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_date, is_valid_image, is_valid_price } from "@/lib/shared/utils"
+
+const order_id_pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 /**
- * Valida comprador, entrega, stock y precios de una sola sede, sin guardar ni cobrar.
+ * Valida comprador, entrega, stock y precios de una sola sede en el canal del comprador, sin guardar ni cobrar.
  * Exige dirección solo para envío; para retiro prepara dirección nula y costo de envío cero.
  * Rechaza el pedido si no se aceptaron los términos y registra la aceptación con la fecha en que se marcó la casilla.
  * Solicita revisar el carrito si cambian precios o cantidades permitidas.
- * @param input Formulario con el nombre del comprador resuelto, carrito completo y tienda elegida.
+ * @param input Formulario con el nombre del comprador resuelto, carrito completo, canal de venta y tienda elegida.
  * @returns Promesa con los datos preparados, una solicitud de revisión, un rechazo o un error de consulta.
  */
 export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOrderResult> {
   const buyer = { ...input.buyer }
   const delivery = { ...input.delivery }
-  const delivery_method = input.delivery_method
+  const { channel, delivery_method } = input
   const selected_store = get_store(input.store?.id ?? null)
   if (!selected_store) return { status: "rejected", message: "Selecciona una tienda para el pedido." }
   const store = { ...selected_store }
@@ -42,9 +47,12 @@ export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOr
     return { status: "rejected", message: "Los productos del pedido deben tener una misma moneda." }
   }
   try {
-    const validations = await get_cart_validation(cart, store)
+    const validations = await get_cart_validation(cart, channel, store)
     if (validations.some((validation) => validation.status === "error")) {
       return { status: "error", message: "No pudimos comprobar todos los productos de la tienda. Intenta nuevamente." }
+    }
+    if (validations.some((validation) => validation.status === "invalid_quantity")) {
+      return { status: "review", message: "Algunos productos no cumplen las condiciones de compra. Revisa las cantidades en el carrito antes de generar el pedido.", validations }
     }
     if (validations.some((validation) => validation.status !== "valid" ||
       validation.item.unit_price !== validation.original_item.unit_price || validation.item.currency !== validation.original_item.currency)) {
@@ -56,23 +64,46 @@ export async function prepare_order(input: PrepareOrderInput): Promise<PrepareOr
     const shipping = delivery_method === "PICKUP" ? 0 : get_cart_shipping_cost(checked_cart)
     const total = subtotal + tax + shipping
     if (!is_valid_price(total)) return { status: "rejected", message: "Los montos del pedido superan el importe permitido." }
-    const items: PreparedOrderItem[] = checked_cart.map((item) => ({
-      product_id: item.product_id,
-      sku: item.sku,
-      selected_size: item.selected_size,
-      title: item.title,
-      image: { ...item.image },
-      unit_price: item.unit_price,
-      quantity: item.quantity,
-      subtotal: get_item_subtotal(item),
-    }))
+    const items: PreparedOrderItem[] = []
+    for (const { item, conditions, available_quantity } of validations) {
+      if (!conditions || available_quantity === null) {
+        return { status: "error", message: "No pudimos comprobar las condiciones de compra de todos los productos." }
+      }
+      items.push({
+        product_id: item.product_id,
+        sku: item.sku,
+        selected_size: item.selected_size,
+        title: item.title,
+        image: { ...item.image },
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        subtotal: get_item_subtotal(item),
+        conditions: { ...conditions },
+        available_quantity,
+      })
+    }
     return { status: "ready", order: {
-      buyer, store, delivery_method, delivery: delivery_method === "PICKUP" ? null : delivery,
+      buyer, channel, store, delivery_method, delivery: delivery_method === "PICKUP" ? null : delivery,
       currency: checked_cart[0].currency, subtotal, tax, shipping, total, items, termsAcceptance: terms_acceptance,
     } }
   } catch {
     return { status: "error", message: "No pudimos comprobar los productos de la tienda. Intenta nuevamente." }
   }
+}
+
+/**
+ * Valida el propietario, el canal y la empresa del pedido.
+ * @param value Datos del comprador.
+ * @returns Contexto comercial validado o null.
+ */
+function parse_order_customer(value: Record<string, unknown>): OrderCustomer | null {
+  const { user_id, role, channel, company } = value
+  if (!is_nonempty_string(user_id) || (role !== "GUEST" && role !== "B2C" && role !== "B2B")) return null
+  const expected_channel = get_sales_channel(role === "GUEST" ? null : { role })
+  if (channel !== expected_channel) return null
+  const order_company = role === "B2B" ? parse_company(company) : null
+  if (role === "B2B" ? order_company === null : company !== null) return null
+  return { user_id, role, channel: expected_channel, company: order_company }
 }
 
 /**
@@ -138,7 +169,7 @@ function parse_order_terms_acceptance(terms_acceptance: unknown): TermsAcceptanc
 
 /**
  * Valida un producto de un pedido.
- * Comprueba los identificadores, la talla, el título, la imagen, la cantidad, el precio unitario y el subtotal.
+ * Comprueba los datos de la línea y que la cantidad respete sus condiciones y stock guardados.
  * @param raw_item Producto sin validar.
  * @param order_id Identificador del pedido al que debe pertenecer.
  * @returns Producto con los textos sin espacios externos, o null si es inválido.
@@ -147,9 +178,15 @@ function parse_order_item(raw_item: unknown, order_id: string): OrderItem | null
   if (!is_record(raw_item) || !is_nonempty_string(raw_item.id) || raw_item.order_id !== order_id ||
     !is_nonempty_string(raw_item.product_id) || !is_nonempty_string(raw_item.sku) || !is_nonempty_string(raw_item.selected_size) ||
     !is_nonempty_string(raw_item.title) || !is_valid_image(raw_item.image) || !is_positive_integer(raw_item.quantity) ||
-    !is_valid_price(raw_item.unit_price, raw_item.quantity) || !is_valid_price(raw_item.subtotal)) {
+    !is_valid_price(raw_item.unit_price, raw_item.quantity) || !is_valid_price(raw_item.subtotal) ||
+    !is_record(raw_item.conditions) || !is_non_negative_integer(raw_item.available_quantity)) {
     return null
   }
+  const { min_order_quantity, max_order_quantity, step_quantity } = raw_item.conditions
+  if (!is_positive_integer(min_order_quantity) || !is_positive_integer(max_order_quantity) || !is_positive_integer(step_quantity)) return null
+  const conditions = { min_order_quantity, max_order_quantity, step_quantity }
+  const limits = get_cart_quantity_limits(conditions, raw_item.available_quantity)
+  if (!is_valid_cart_quantity(raw_item.quantity, limits)) return null
 
   return {
     id: raw_item.id.trim(),
@@ -162,6 +199,8 @@ function parse_order_item(raw_item: unknown, order_id: string): OrderItem | null
     unit_price: raw_item.unit_price,
     quantity: raw_item.quantity,
     subtotal: raw_item.subtotal,
+    conditions,
+    available_quantity: raw_item.available_quantity,
   }
 }
 
@@ -192,23 +231,16 @@ function parse_order_payment(raw_payment: unknown, order: Pick<OrderDetails, "id
 }
 
 /**
- * Valida los datos de los pedidos y conserva los que tienen una estructura válida.
- * Por cada pedido:
- * - Valida el identificador, el número, la fecha, la moneda, los montos y el estado.
- * - Valida la persona compradora, la entrega y los productos mediante parse_order_buyer(), parse_order_delivery() y parse_order_item().
- * - Valida la aceptación de los términos mediante parse_order_terms_acceptance().
- * - Valida que payment sea null o un pago válido según parse_order_payment(), y que su estado sea compatible con el pedido.
- * - Descarta los pedidos con un identificador o número repetido.
+ * Valida los pedidos del formato vigente y descarta identificadores repetidos.
  * @param orders_data Datos de los pedidos sin validar.
  * @returns Pedidos con una estructura válida.
  */
 export function parse_orders_data(orders_data: unknown): OrderDetails[] {
   if (!Array.isArray(orders_data)) return []
   const orders_by_id = new Map<string, OrderDetails>()
-  const order_numbers = new Set<number>()
 
   for (const raw_order of orders_data) {
-    if (!is_record(raw_order) || !is_nonempty_string(raw_order.id) || !is_positive_integer(raw_order.order_number) ||
+    if (!is_record(raw_order) || typeof raw_order.id !== "string" || !order_id_pattern.test(raw_order.id) ||
       !is_valid_date(raw_order.created_at) || !is_valid_currency(raw_order.currency) ||
       !is_valid_price(raw_order.subtotal) || !is_valid_price(raw_order.tax) || !is_valid_price(raw_order.shipping) || !is_valid_price(raw_order.total) ||
       (raw_order.status !== "PENDING" && raw_order.status !== "CONFIRMED" && raw_order.status !== "CANCELLED") ||
@@ -217,7 +249,10 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
       continue
     }
 
-    const order_id = raw_order.id.trim()
+    const order_id = raw_order.id
+    const order_number = get_order_number(order_id)
+    if (raw_order.order_number !== order_number || orders_by_id.has(order_id)) continue
+    const customer = parse_order_customer(raw_order)
     const store = is_record(raw_order.store) && typeof raw_order.store.id === "string" ? get_store(raw_order.store.id) : null
     const buyer = parse_order_buyer(raw_order.buyer)
     const delivery = raw_order.delivery_method === "SHIPPING" ? parse_order_delivery(raw_order.delivery) : null
@@ -227,16 +262,17 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
     const has_inconsistent_payment = (raw_order.status === "CONFIRMED" && payment?.status !== "APPROVE") ||
       (raw_order.status !== "CONFIRMED" && payment?.status === "APPROVE") ||
       (raw_order.status === "CANCELLED" && payment?.status === "PENDING")
-    if (!store || !buyer || !terms_acceptance || (raw_order.delivery_method === "SHIPPING" && !delivery) ||
+    if (!customer || !store || !buyer || !terms_acceptance || (raw_order.delivery_method === "SHIPPING" && !delivery) ||
       (raw_order.delivery_method === "PICKUP" && (raw_order.delivery !== null || raw_order.shipping !== 0)) ||
       items.some((item) => item === null) || (raw_order.payment !== null && !payment) ||
-      has_inconsistent_payment || orders_by_id.has(order_id) || order_numbers.has(raw_order.order_number)) {
+      has_inconsistent_payment) {
       continue
     }
 
     orders_by_id.set(order_id, {
+      ...customer,
       id: order_id,
-      order_number: raw_order.order_number,
+      order_number,
       created_at: raw_order.created_at,
       buyer,
       store: { ...store },
@@ -252,35 +288,17 @@ export function parse_orders_data(orders_data: unknown): OrderDetails[] {
       items: items.filter((item) => item !== null),
       payment,
     })
-    order_numbers.add(raw_order.order_number)
   }
   return [...orders_by_id.values()]
 }
 
 /**
- * Obtiene los pedidos guardados en localStorage y los valida mediante parse_orders_data().
- * @returns Pedidos válidos, o un arreglo vacío si no se pueden recuperar.
+ * Genera la referencia visible del pedido.
+ * @param order_id UUID del pedido.
+ * @returns Referencia con el UUID completo.
  */
-export function get_stored_orders(): OrderDetails[] {
-  return parse_orders_data(get_stored_json("space-shop-orders"))
-}
-
-/**
- * Guarda los pedidos en localStorage, o elimina la clave si no hay pedidos.
- * @param orders Pedidos que se desean guardar.
- * @returns true si se guardó; false si el navegador rechaza la operación.
- */
-export function save_orders(orders: OrderDetails[]): boolean {
-  return save_stored_list("space-shop-orders", orders)
-}
-
-/**
- * Calcula el siguiente número consecutivo de pedido.
- * @param orders Pedidos existentes.
- * @returns Número mayor registrado más uno, o 1 si no hay pedidos.
- */
-export function get_next_order_number(orders: OrderDetails[]): number {
-  return orders.reduce((max_number, order) => Math.max(max_number, order.order_number), 0) + 1
+function get_order_number(order_id: string): string {
+  return `SS-${order_id.toUpperCase()}`
 }
 
 /**
@@ -301,24 +319,33 @@ export function create_order_item(item: PreparedOrderItem, order_id: string): Or
     unit_price: item.unit_price,
     quantity: item.quantity,
     subtotal: item.subtotal,
+    conditions: { ...item.conditions },
+    available_quantity: item.available_quantity,
   }
 }
 
 /**
- * Crea un pedido PENDING con los datos verificados, sin recalcularlos desde otro carrito o sede.
- * Copia la aceptación de los términos y nunca crea un pedido sin una aceptación válida.
+ * Crea un pedido pendiente con los datos verificados y el propietario de la compra.
  * @param prepared_order Datos preparados.
- * @param order_number Número del pedido.
- * @returns Pedido creado sin pago, o null si no tiene productos, un consecutivo válido o la aceptación de los términos.
+ * @param owner_id Identificador del usuario o invitado.
+ * @param user Usuario activo o null para el invitado.
+ * @returns Pedido sin pago o null si la compra no es válida.
  */
-export function create_order(prepared_order: PreparedOrder, order_number: number): OrderDetails | null {
-  if (prepared_order.items.length === 0 || !is_positive_integer(order_number)) return null
+export function create_order(prepared_order: PreparedOrder, owner_id: string, user: User | null): OrderDetails | null {
+  if (prepared_order.items.length === 0 || (user && user.id !== owner_id)) return null
+  const customer = parse_order_customer({
+    user_id: owner_id,
+    role: user?.role ?? "GUEST",
+    channel: prepared_order.channel,
+    company: user?.company ?? null,
+  })
   const terms_acceptance = parse_order_terms_acceptance(prepared_order.termsAcceptance)
-  if (!terms_acceptance) return null
+  if (!customer || !terms_acceptance) return null
   const order_id = crypto.randomUUID()
   return {
+    ...customer,
     id: order_id,
-    order_number,
+    order_number: get_order_number(order_id),
     created_at: new Date().toISOString(),
     buyer: { ...prepared_order.buyer },
     store: { ...prepared_order.store },
@@ -363,10 +390,10 @@ export function get_order_pagination(items: OrderItem[], requested_page = 1): Or
  * Agrega un pedido al inicio de la lista.
  * @param state Estado actual de los pedidos.
  * @param new_order Pedido que se desea agregar.
- * @returns Pedidos actualizados, o el mismo estado si ya existe un pedido con el mismo id o número.
+ * @returns Pedidos actualizados o el mismo estado si el ID ya existe.
  */
 export function add_order(state: OrderDetails[], new_order: OrderDetails): OrderDetails[] {
-  if (state.some((order) => order.id === new_order.id || order.order_number === new_order.order_number)) return state
+  if (state.some((order) => order.id === new_order.id)) return state
   return [new_order, ...state]
 }
 

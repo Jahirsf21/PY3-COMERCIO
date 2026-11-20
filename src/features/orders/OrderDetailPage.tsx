@@ -10,6 +10,8 @@ import { PaymentConfirmation } from "@/features/payments/components/PaymentConfi
 import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrderSummary"
 import { format_order_date, get_order_availability } from "@/lib/orders/orders"
 import { useOrders } from "@/lib/orders/ordersContext"
+import { useAuth } from "@/lib/auth/authContext"
+import { order_payment_path } from "@/lib/navigation/routes"
 
 /**
  * Recupera un pedido por su identificador y muestra sus productos, datos del cliente y acciones permitidas.
@@ -17,8 +19,9 @@ import { useOrders } from "@/lib/orders/ordersContext"
  * @returns Detalle del pedido, confirmación de una compra aprobada o aviso de pedido no disponible.
  */
 export default function OrderDetailPage() {
+  const { user } = useAuth()
   const { orderId } = useParams<{ orderId: string }>()
-  const { get_order, storage_error, unsaved_order_ids } = useOrders()
+  const { get_order, orders_read_status, storage_error, unsaved_order_ids } = useOrders()
   const order = orderId ? get_order(orderId) : undefined
   const has_unsaved_result = order !== undefined && unsaved_order_ids.includes(order.id)
   const availability = order ? get_order_availability(order, has_unsaved_result) : null
@@ -29,34 +32,37 @@ export default function OrderDetailPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
         <OrdersNotice />
         {!order || !availability ? (
-          <section className="rounded-xl border border-input bg-card p-6">
-            <h1 className="text-2xl font-semibold">{storage_error ? "No pudimos recuperar este pedido" : "No encontramos este pedido"}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Revisa tus pedidos o verifica el enlace.</p>
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <h1 className="text-2xl font-bold tracking-tight">{orders_read_status === "loading" ? "Buscando el pedido…"
+              : storage_error || orders_read_status === "error" ? "No pudimos recuperar este pedido" : "No encontramos este pedido"}</h1>
+            {orders_read_status === "ready" && !storage_error && (
+              <p className="mt-2 text-sm text-muted-foreground">Revisa tus pedidos o verifica el enlace.</p>
+            )}
           </section>
         ) : availability.is_confirmed ? (
           <PaymentConfirmation order={order} show_order_link={false} />
         ) : (
           <div className="space-y-6">
-            <section aria-labelledby="order-detail-title" className="min-w-0 rounded-xl border border-input bg-card p-5 sm:p-6">
+            <section aria-labelledby="order-detail-title" className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 id="order-detail-title" className="text-2xl font-semibold">Pedido #{order.order_number}</h1>
+                <h1 id="order-detail-title" className="text-2xl font-bold tracking-tight wrap-anywhere sm:text-3xl">Pedido #{order.order_number}</h1>
                 <OrderStatusBadge order={order} has_unsaved_result={has_unsaved_result} />
               </div>
               <p className="mt-2 text-sm text-muted-foreground"><time dateTime={order.created_at}>{format_order_date(order.created_at)}</time></p>
-              {(availability.can_pay || availability.can_cancel || availability.is_processing || has_unsaved_result) && (
+              {user?.role !== "ADMIN" && (availability.can_pay || availability.can_cancel || availability.is_processing || has_unsaved_result) && (
                 <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
                   {availability.can_pay && (
-                    <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ className: "cursor-pointer" })}>
+                    <Link to={order_payment_path(order.id)} className={buttonVariants({ className: "cursor-pointer" })}>
                       Continuar pago
                     </Link>
                   )}
                   {availability.is_processing && (
-                    <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ variant: "outline", className: "cursor-pointer" })}>
+                    <Link to={order_payment_path(order.id)} className={buttonVariants({ variant: "outline", className: "cursor-pointer" })}>
                       Ver estado del pago
                     </Link>
                   )}
                   {has_unsaved_result && (
-                    <Link to={`/pedido/${encodeURIComponent(order.id)}/pago`} className={buttonVariants({ className: "cursor-pointer" })}>
+                    <Link to={order_payment_path(order.id)} className={buttonVariants({ className: "cursor-pointer" })}>
                       Revisar resultado
                     </Link>
                   )}

@@ -8,7 +8,7 @@ export function ProductGrid() {
 
   if (status === "idle" && !results.__isArtificial && results.nbHits === 0) {
     return (
-      <div role="status" className="rounded-lg border border-input px-4 py-12 text-center">
+      <div role="status" className="rounded-2xl border border-border bg-card px-4 py-12 text-center">
         <p className="font-medium">No hay productos disponibles</p>
         <p className="mt-2 text-sm text-muted-foreground">
           Prueba otra búsqueda o ajusta los filtros.

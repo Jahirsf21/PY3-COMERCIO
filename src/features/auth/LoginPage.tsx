@@ -3,17 +3,18 @@ import type { SubmitEvent } from "react"
 import { Link, Navigate, useLocation } from "react-router-dom"
 import type { To } from "react-router-dom"
 import { ArrowRightIcon, LoaderCircleIcon, LockIcon, UserIcon } from "lucide-react"
+import { NoticeDialog } from "@/components/notice-dialog"
 import { Button } from "@/components/ui/button"
 import { FieldGroup } from "@/components/ui/field"
 import { ShopFooter } from "@/components/shop-footer"
 import { ShopHeader } from "@/components/shop-header"
 import { LoginBackground } from "@/features/auth/components/LoginBackground"
 import { LoginInputField } from "@/features/auth/components/LoginInputField"
-import { LoginNoticeDialog } from "@/features/auth/components/LoginNoticeDialog"
 import { validate_login_credentials } from "@/lib/auth/auth"
 import { useAuth } from "@/lib/auth/authContext"
 import type { LoginCredentials, LoginResult } from "@/lib/auth/types"
 import { is_record } from "@/lib/shared/utils"
+import { routes } from "@/lib/navigation/routes"
 
 type LoginNotice = {
   title: string
@@ -35,8 +36,8 @@ const notice_titles: Record<Exclude<LoginResult["status"], "success">, string> =
  */
 function get_return_route(state: unknown): To {
   const from = is_record(state) ? state.from : undefined
-  if (typeof from === "string" && from.startsWith("/") && !from.startsWith("//") && from !== "/login") return from
-  if (is_record(from) && typeof from.pathname === "string" && from.pathname.startsWith("/") && from.pathname !== "/login") {
+  if (typeof from === "string" && from.startsWith("/") && !from.startsWith("//") && from !== routes.login) return from
+  if (is_record(from) && typeof from.pathname === "string" && from.pathname.startsWith("/") && from.pathname !== routes.login) {
     return {
       pathname: from.pathname,
       search: typeof from.search === "string" ? from.search : "",
@@ -117,7 +118,7 @@ export default function LoginPage() {
     window.requestAnimationFrame(() => document.getElementById("login-password")?.focus())
   }
 
-  if (user) return <Navigate to={get_return_route(location.state)} replace />
+  if (user) return <Navigate to={user.role === "ADMIN" ? routes.admin_orders : get_return_route(location.state)} replace />
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
@@ -174,8 +175,9 @@ export default function LoginPage() {
         </section>
       </main>
       <ShopFooter compact />
-      <LoginNoticeDialog
+      <NoticeDialog
         open={notice !== null}
+        context_label="Inicio de sesión"
         title={notice?.title ?? ""}
         message={notice?.message ?? ""}
         on_open_change={change_notice_open}

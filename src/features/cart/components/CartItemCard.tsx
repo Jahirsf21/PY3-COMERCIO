@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom"
 import { CartQuantityStepper } from "@/features/cart/components/CartQuantityStepper"
 import { RemoveCartItemDialog } from "@/features/cart/components/RemoveCartItemDialog"
-import { get_item_subtotal } from "@/lib/cart/cart"
+import { get_cart_conditions_text, get_item_subtotal } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import type { CartItem } from "@/lib/cart/types"
+import { get_available_quantity_text } from "@/lib/stores/stores"
+import { useStores } from "@/lib/stores/storesContext"
 import { format_price } from "@/lib/shared/utils"
+import { product_path } from "@/lib/navigation/routes"
 
 type CartItemCardProps = {
   item: CartItem
@@ -18,22 +21,28 @@ type CartItemCardProps = {
  */
 export function CartItemCard({ item }: CartItemCardProps) {
   const { item_validation } = useCart()
+  const { selected_store } = useStores()
   const validation = item_validation[item.id]
   const confirmed = validation?.status === "valid"
+  const conditionsText = get_cart_conditions_text(validation?.conditions ?? null)
   const priceConfirmed = confirmed || validation?.status === "invalid_quantity" || (validation?.status === "unavailable" && validation.limits !== null)
   return (
-    <li className="@container min-w-0 rounded-xl border border-input bg-card p-4">
+    <li className="@container min-w-0 rounded-2xl border border-border bg-card p-4">
       <div className="grid gap-4 @sm:grid-cols-[96px_minmax(0,1fr)]">
         <img src={item.image.url} alt={item.image.alt} className="size-24 rounded-lg bg-muted object-contain" loading="lazy" />
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <Link
-              to={`/producto/${encodeURIComponent(item.product_id)}?${new URLSearchParams({ variante: item.sku, talla: item.selected_size })}`}
+              to={product_path(item.product_id, { variante: item.sku, talla: item.selected_size })}
               className="rounded-sm font-medium leading-snug break-words hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {item.title}
             </Link>
             <p className="mt-2 text-sm text-muted-foreground">Talla: {item.selected_size}</p>
+            {conditionsText && <p className="mt-1 text-xs text-muted-foreground">{conditionsText}</p>}
+            {typeof validation?.available_quantity === "number" && validation.status !== "error" && (
+              <p className="mt-1 text-xs text-muted-foreground">{get_available_quantity_text(validation.available_quantity, selected_store)}</p>
+            )}
           </div>
           <RemoveCartItemDialog item={item} />
         </div>

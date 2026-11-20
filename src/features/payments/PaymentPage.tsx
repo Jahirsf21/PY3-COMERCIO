@@ -1,15 +1,17 @@
 import { useState } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
+import { NoticeDialog } from "@/components/notice-dialog"
 import { Button } from "@/components/ui/button"
 import { ShopHeader } from "@/components/shop-header"
 import { OrderProducts } from "@/features/orders/components/OrderProducts"
+import { OrdersNotice } from "@/features/orders/components/OrdersNotice"
 import { PaymentForm } from "@/features/payments/components/PaymentForm"
 import { PaymentOrderSummary } from "@/features/payments/components/PaymentOrderSummary"
-import { PaymentNoticeDialog } from "@/features/payments/components/PaymentNoticeDialog"
 import { get_order_payment_block } from "@/lib/orders/orders"
 import { useOrders } from "@/lib/orders/ordersContext"
 import type { PayOrderResult } from "@/lib/orders/types"
 import type { PaymentStatus } from "@/lib/payments/types"
+import { order_path } from "@/lib/navigation/routes"
 
 type PaymentFeedback = {
   key: string
@@ -22,7 +24,7 @@ type PaymentFeedback = {
 
 export default function PaymentPage() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { get_order, storage_error, unsaved_order_ids, retry_save_orders } = useOrders()
+  const { get_order, orders_read_status, storage_error, unsaved_order_ids, retry_save_orders } = useOrders()
   const [feedback, set_feedback] = useState<PaymentFeedback | null>(null)
   const [dismissed_notice_key, set_dismissed_notice_key] = useState<string | null>(null)
   const order = orderId ? get_order(orderId) : undefined
@@ -77,40 +79,42 @@ export default function PaymentPage() {
   }
 
   if (order && !has_unsaved_result && (is_confirmed || order.status === "CANCELLED")) {
-    return <Navigate to={`/pedido/${encodeURIComponent(order.id)}`} replace />
+    return <Navigate to={order_path(order.id)} replace />
   }
 
   return (
     <div className="min-h-dvh bg-background">
       <ShopHeader sticky />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
+        {!storage_error && <OrdersNotice />}
         {!order ? (
-          <section className="rounded-xl border border-input bg-card p-6">
-            <h1 className="text-2xl font-semibold">No encontramos esta orden</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Verifica el enlace y utiliza el navegador donde realizaste la compra.
-            </p>
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <h1 className="text-2xl font-bold tracking-tight">{orders_read_status === "loading" ? "Buscando la orden…"
+              : storage_error || orders_read_status === "error" ? "No pudimos recuperar esta orden" : "No encontramos esta orden"}</h1>
+            {orders_read_status === "ready" && !storage_error && (
+              <p className="mt-2 text-sm text-muted-foreground">Verifica el enlace y la sesión con la que realizaste la compra.</p>
+            )}
           </section>
         ) : (
           <>
-            <h1 className="text-2xl font-semibold">Pago de tu orden</h1>
+            <h1 className="text-3xl font-bold tracking-tight uppercase">Pago de tu orden</h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               <p className="text-muted-foreground">Orden #{order.order_number}</p>
-              <Link to={`/pedido/${encodeURIComponent(order.id)}`} className="rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Link to={order_path(order.id)} className="rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Ver pedido
               </Link>
             </div>
             <div className="mt-6 space-y-6">
               <div className="grid items-start gap-6 lg:grid-cols-2">
                 {has_unsaved_result ? (
-                  <section aria-labelledby="payment-save-title" className="rounded-xl border border-input bg-card p-5 sm:p-6">
+                  <section aria-labelledby="payment-save-title" className="rounded-2xl border border-border bg-card p-5 sm:p-6">
                     <h2 id="payment-save-title" className="text-lg font-semibold">Confirmación pendiente</h2>
                     <Button type="button" onClick={() => set_dismissed_notice_key(null)} className="mt-6 cursor-pointer">
                       Ver aviso
                     </Button>
                   </section>
                 ) : is_blocked ? (
-                  <section className="rounded-xl border border-input bg-card p-5 sm:p-6">
+                  <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
                     <h2 className="text-lg font-semibold">Esta orden no admite pagos</h2>
                     <p className="mt-2 text-sm text-muted-foreground">{get_order_payment_block(order)}</p>
                   </section>
@@ -129,10 +133,12 @@ export default function PaymentPage() {
           </>
         )}
       </main>
-      <PaymentNoticeDialog
+      <NoticeDialog
         open={current_notice !== null && dismissed_notice_key !== current_notice.key}
+        context_label="Pago de tu orden"
         title={current_notice?.title ?? "Aviso del pago"}
         message={current_notice?.message ?? ""}
+        tone={has_unsaved_result ? "warning" : "error"}
         on_open_change={change_notice_open}
         on_retry={has_unsaved_result ? retry_save_orders : undefined}
       />

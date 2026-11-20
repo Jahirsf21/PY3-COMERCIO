@@ -1,11 +1,14 @@
-import type { CartProduct, CartItem, CartAction, CartQuantityLimits, CartValidationResult, CartPagination } from "@/lib/cart/types"
+import type { CartProduct, CartItem, CartAction, CartItemValidation, CartQuantityConditions, CartQuantityLimits, CartValidationResult, CartPagination } from "@/lib/cart/types"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
-import { algolia_indices, search_client } from "@/lib/algolia/algolia"
+import type { SalesChannel } from "@/lib/channel/types"
+import { get_product_indices, search_client } from "@/lib/algolia/algolia"
 import { get_suggestions } from "@/lib/shared/suggestions"
 import { get_filter_value, get_product_quantity_limits, get_stored_json, get_user_storage_key, is_non_negative_integer, is_nonempty_string, is_positive_integer, is_record, is_valid_currency, is_valid_image, is_valid_price, save_stored_list } from "@/lib/shared/utils"
 import type { Store } from "@/lib/stores/types"
 
-type QuantityProduct = Pick<CartProduct, "b2c_min_order_quantity" | "b2c_max_order_quantity" | "b2c_step_quantity">
+const cart_storage_key = "space-shop-cart"
+
+type QuantityProduct = Pick<CartProduct, "min_order_quantity" | "max_order_quantity" | "step_quantity">
 
 /**
  * Valida los datos del carrito y conserva las líneas con una estructura válida.
@@ -56,25 +59,23 @@ export function parse_cart_data(cart_data: unknown): CartItem[] {
 
 /**
  * Obtiene el carrito de un usuario guardado en localStorage y lo valida mediante parse_cart_data().
- * Sin sesión no hay carrito guardado.
- * @param user_id Identificador del usuario con sesión iniciada, o null si no hay sesión.
- * @returns Líneas válidas, o un arreglo vacío si no hay sesión o no se pueden recuperar.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
+ * @returns Líneas válidas, o un arreglo vacío si no hay dueño o no se pueden recuperar.
  */
 export function get_stored_cart(user_id: string | null): CartItem[] {
   if (!user_id) return []
-  return parse_cart_data(get_stored_json(get_user_storage_key("space-shop-cart", user_id)))
+  return parse_cart_data(get_stored_json(get_user_storage_key(cart_storage_key, user_id)))
 }
 
 /**
  * Guarda las líneas del carrito de un usuario en localStorage, o elimina su clave si el carrito está vacío.
- * Sin sesión no guarda nada: el carrito queda solo en memoria.
- * @param user_id Identificador del usuario dueño del carrito, o null si no hay sesión.
+ * @param user_id Identificador del usuario o de la sesión anónima, o null si no hay dueño.
  * @param cart Líneas del carrito.
  * @returns true si se guardó o no había nada que guardar; false si el navegador rechaza la operación.
  */
 export function save_cart(user_id: string | null, cart: CartItem[]): boolean {
   if (!user_id) return true
-  return save_stored_list(get_user_storage_key("space-shop-cart", user_id), cart)
+  return save_stored_list(get_user_storage_key(cart_storage_key, user_id), cart)
 }
 
 /**
@@ -83,13 +84,13 @@ export function save_cart(user_id: string | null, cart: CartItem[]): boolean {
  * @returns Resultado con estado error, sin límites y con un mensaje para reintentar.
  */
 export function get_cart_validation_error(item: CartItem): CartValidationResult {
-  return { original_item: item, item, status: "error", limits: null, message: "No pudimos actualizar este producto. Intenta de nuevo." }
+  return { original_item: item, item, status: "error", limits: null, conditions: null, available_quantity: null, message: "No pudimos actualizar este producto. Intenta de nuevo." }
 }
 
 /**
  * Valida una línea del carrito con los datos actuales del catálogo.
- * - Comprueba el producto, el SKU, el canal B2C, el título, la imagen, la moneda, el precio y la vigencia del descuento.
- * - Calcula los límites de cantidad con las reglas B2C y el stock disponible.
+ * - Comprueba el producto, el SKU, el título, la imagen, la moneda, el precio y la vigencia del descuento.
+ * - Calcula los límites de cantidad con las reglas del canal y el stock disponible.
  * - Actualiza el título, la imagen, la moneda y el precio de la línea, conservando la cantidad.
  * @param item Línea del carrito.
  * @param product Variante consultada en el catálogo, o undefined si no existe.
@@ -102,16 +103,15 @@ export function get_cart_validation_error(item: CartItem): CartValidationResult 
  *   message: mensaje para la persona compradora cuando status no es valid.
  */
 export function validate_cart_item(item: CartItem, product: ProductRecord | undefined, available_quantity: number): CartValidationResult {
-  if (!product || product.product_id !== item.product_id || product.sku !== item.sku ||
-    !Array.isArray(product.sales_channels) || !product.sales_channels.includes("b2c")) {
-    return { original_item: item, item, status: "unavailable", limits: null, message: "Este producto ya no está disponible. Puedes quitarlo del carrito." }
+  if (!product || product.product_id !== item.product_id || product.sku !== item.sku) {
+    return { original_item: item, item, status: "unavailable", limits: null, conditions: null, available_quantity: 0, message: "Este producto ya no está disponible. Puedes quitarlo del carrito." }
   }
   if (!is_nonempty_string(product.title) || !is_valid_image(product.image) || !is_valid_currency(product.currency) ||
-    !is_valid_price(product.b2c_price) || typeof product.on_discount !== "boolean") return get_cart_validation_error(item)
+    !is_valid_price(product.price) || typeof product.on_discount !== "boolean") return get_cart_validation_error(item)
 
   let has_active_discount = product.on_discount
   if (has_active_discount) {
-    const discount = product.b2c_discount
+    const discount = product.discount
     if (!discount || typeof discount.percentage !== "number" || !Number.isFinite(discount.percentage) ||
       discount.percentage < 0 || discount.percentage > 100 || typeof discount.starts_at !== "string" || typeof discount.ends_at !== "string") {
       return get_cart_validation_error(item)
@@ -125,19 +125,126 @@ export function validate_cart_item(item: CartItem, product: ProductRecord | unde
 
   const limits = get_cart_quantity_limits(product, available_quantity)
   if (!limits) return get_cart_validation_error(item)
+  const conditions = get_cart_quantity_conditions(product)
   const updated_item = create_cart_item({ ...product, on_discount: has_active_discount }, item.selected_size, item.quantity)
   if (!is_valid_price(updated_item.unit_price)) return get_cart_validation_error(item)
   const has_same_details = item.id === updated_item.id && item.title === updated_item.title && item.currency === updated_item.currency &&
     item.unit_price === updated_item.unit_price && item.image.url === updated_item.image.url && item.image.alt === updated_item.image.alt
   const current_item = has_same_details ? item : updated_item
   if (limits.max_quantity < limits.min_quantity) {
-    return { original_item: item, item: current_item, status: "unavailable", limits, message: "Esta talla ya no está disponible para tu compra. Prueba otra talla o color." }
+    return { original_item: item, item: current_item, status: "unavailable", limits, conditions, available_quantity, message: get_cart_unavailable_message(conditions, available_quantity) }
   }
   if (!is_valid_cart_quantity(item.quantity, limits)) {
-    return { original_item: item, item: current_item, status: "invalid_quantity", limits, message: "Ajusta la cantidad o quita el producto para continuar." }
+    return { original_item: item, item: current_item, status: "invalid_quantity", limits, conditions, available_quantity, message: get_cart_quantity_issue_message(item.quantity, limits, conditions, available_quantity) }
   }
   if (!is_valid_price(updated_item.unit_price, updated_item.quantity)) return get_cart_validation_error(item)
-  return { original_item: item, item: current_item, status: "valid", limits }
+  return { original_item: item, item: current_item, status: "valid", limits, conditions, available_quantity }
+}
+
+/**
+ * Obtiene las condiciones de compra de una variante tal como vienen en el índice del canal.
+ * @param product Reglas de cantidad del producto.
+ * @returns Mínimo, máximo y paso de compra, sin recortar por el stock.
+ */
+export function get_cart_quantity_conditions(product: QuantityProduct): CartQuantityConditions {
+  const { min_order_quantity, max_order_quantity, step_quantity } = product
+  return { min_order_quantity, max_order_quantity, step_quantity }
+}
+
+/**
+ * Da formato a una cantidad de unidades en singular o plural.
+ * @param quantity Cantidad de unidades.
+ * @returns Texto con la cantidad y la palabra unidad o unidades.
+ */
+function format_units(quantity: number): string {
+  return `${quantity} ${quantity === 1 ? "unidad" : "unidades"}`
+}
+
+/**
+ * Describe las condiciones de compra de una línea cuando exigen más de una unidad.
+ * @param conditions Condiciones de compra de la variante, o null si no se conocen.
+ * @returns Texto con el mínimo, el paso si es mayor que 1 y el máximo, o null si el mínimo es 1 o no hay condiciones.
+ */
+export function get_cart_conditions_text(conditions: CartQuantityConditions | null): string | null {
+  if (!conditions || conditions.min_order_quantity <= 1) return null
+  const parts = [`Compra mínima: ${format_units(conditions.min_order_quantity)}`]
+  if (conditions.step_quantity > 1) parts.push(`de ${conditions.step_quantity} en ${conditions.step_quantity}`)
+  parts.push(`máximo: ${format_units(conditions.max_order_quantity)}`)
+  return parts.join(" · ")
+}
+
+/**
+ * Obtiene el aviso general del carrito cuando hay líneas que impiden continuar con la compra.
+ * Si todas las líneas señaladas incumplen sus condiciones de cantidad, lo indica con su número.
+ * @param validations Validaciones de las líneas del carrito.
+ * @returns Mensaje de revisión, o null si ninguna línea está señalada.
+ */
+export function get_cart_review_message(validations: CartItemValidation[]): string | null {
+  const flagged = validations.filter((validation) => validation.status !== "valid" && validation.status !== "pending")
+  if (flagged.length === 0) return null
+  if (flagged.every((validation) => validation.status === "invalid_quantity")) {
+    return flagged.length === 1
+      ? "1 producto no cumple las condiciones de compra. Ajusta su cantidad para continuar."
+      : `${flagged.length} productos no cumplen las condiciones de compra. Ajusta sus cantidades para continuar.`
+  }
+  return flagged.length === 1 ? "Revisa el producto señalado antes de continuar." : `Revisa los ${flagged.length} productos señalados antes de continuar.`
+}
+
+/**
+ * Explica por qué se ajustó o se quitó automáticamente una línea al reconciliar el carrito.
+ * @param result Validación de la línea antes del ajuste.
+ * @param quantity Cantidad que quedó en la línea; 0 si se quitó.
+ * @returns Motivo del ajuste para la persona compradora.
+ */
+export function get_cart_adjustment_reason(result: CartValidationResult, quantity: number): string {
+  const { status, limits, conditions, original_item, message } = result
+  if (status === "unavailable") return message ?? "Este producto ya no está disponible."
+  if (!limits || !conditions) return "Ajustamos la cantidad a las unidades permitidas."
+  if (original_item.quantity < limits.min_quantity) return `La compra mínima es de ${format_units(limits.min_quantity)}.`
+  if (original_item.quantity > conditions.max_order_quantity) return `El máximo por compra es de ${format_units(conditions.max_order_quantity)}.`
+  if (original_item.quantity > limits.max_quantity) return `Solo hay ${format_units(limits.max_quantity)} disponibles para tu compra.`
+  if (quantity > 0 && limits.step_quantity > 1) return `Este producto se compra de ${limits.step_quantity} en ${limits.step_quantity}.`
+  return "Ajustamos la cantidad a las unidades permitidas."
+}
+
+/**
+ * Obtiene el mensaje de una línea que no se puede comprar porque el stock no alcanza el mínimo.
+ * Si hay unidades pero menos que una compra mínima mayor que 1, explica ambas cantidades.
+ * @param conditions Condiciones de compra de la variante.
+ * @param available_quantity Stock disponible de la talla.
+ * @returns Mensaje para la persona compradora.
+ */
+export function get_cart_unavailable_message(conditions: CartQuantityConditions, available_quantity: number): string {
+  if (available_quantity > 0 && conditions.min_order_quantity > 1) {
+    return `Solo hay ${format_units(available_quantity)} disponibles y la compra mínima es de ${format_units(conditions.min_order_quantity)}. Prueba otra tienda, talla o color.`
+  }
+  return "Esta talla ya no está disponible para tu compra. Prueba otra talla o color."
+}
+
+/**
+ * Obtiene el motivo por el que la cantidad de una línea no cumple sus condiciones de compra.
+ * Distingue el mínimo, el máximo de la regla, el stock disponible y el paso.
+ * @param quantity Cantidad de la línea.
+ * @param limits Límites de cantidad de la línea, con el máximo recortado por el stock.
+ * @param conditions Condiciones de compra de la variante.
+ * @param available_quantity Stock disponible de la talla.
+ * @returns Mensaje con el motivo y la acción para continuar.
+ */
+export function get_cart_quantity_issue_message(quantity: number, limits: CartQuantityLimits, conditions: CartQuantityConditions, available_quantity: number): string {
+  const { min_quantity, max_quantity, step_quantity } = limits
+  if (quantity < min_quantity) {
+    return `La compra mínima es de ${format_units(min_quantity)}. Agrega ${min_quantity - quantity} más o quita el producto.`
+  }
+  if (quantity > max_quantity) {
+    return available_quantity < conditions.max_order_quantity
+      ? `Solo hay ${format_units(available_quantity)} disponibles. Reduce la cantidad a ${max_quantity}.`
+      : `El máximo por compra es de ${format_units(conditions.max_order_quantity)}. Reduce la cantidad a ${max_quantity}.`
+  }
+  const lower_quantity = min_quantity + Math.floor((quantity - min_quantity) / step_quantity) * step_quantity
+  const upper_quantity = Math.min(lower_quantity + step_quantity, max_quantity)
+  return lower_quantity === upper_quantity
+    ? `Este producto se compra de ${step_quantity} en ${step_quantity}. Elige ${format_units(lower_quantity)}.`
+    : `Este producto se compra de ${step_quantity} en ${step_quantity}. Elige ${lower_quantity} o ${upper_quantity} unidades.`
 }
 
 /**
@@ -163,7 +270,7 @@ export function refresh_cart_items(state: CartItem[], validation_results: CartVa
 
 /**
  * Calcula los límites de cantidad de una línea mediante get_product_quantity_limits().
- * @param product Reglas de cantidad B2C del producto.
+ * @param product Reglas de cantidad del producto.
  * @param available_quantity Stock disponible de la talla seleccionada.
  * @returns Límites de cantidad, o null si las reglas o el stock son inválidos.
  */
@@ -257,15 +364,15 @@ export function get_cart_item_id(sku: string, selected_size: string): string {
 }
 
 /**
- * Calcula el precio unitario B2C de un producto aplicando su descuento si está activo.
- * @param product Producto que se agregará al carrito.
- * @returns Precio unitario con el descuento aplicado, o b2c_price si no tiene descuento.
+ * Calcula el precio unitario de un producto aplicando su descuento si está activo.
+ * @param product Precio, descuento y estado del descuento del producto.
+ * @returns Precio unitario con el descuento aplicado, o price si no tiene descuento.
  */
-export function get_product_unit_price(product: CartProduct): number {
-  if (product.on_discount && product.b2c_discount) {
-    return product.b2c_price * (1 - product.b2c_discount.percentage / 100)
+export function get_product_unit_price(product: Pick<CartProduct, "price" | "discount" | "on_discount">): number {
+  if (product.on_discount && product.discount) {
+    return product.price * (1 - product.discount.percentage / 100)
   }
-  return product.b2c_price
+  return product.price
 }
 
 /**
@@ -360,18 +467,18 @@ export function get_cart_pagination(cart: CartItem[], requested_page = 1): CartP
  * Consulta hasta 20 productos sugeridos según las categorías de los productos del carrito.
  * Obtiene las categorías mediante facetas de Algolia y busca las sugerencias con get_suggestions().
  * @param product_ids Identificadores de los productos del carrito.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @param selected_store Tienda en la que deben estar disponibles las sugerencias; null usa el mayor stock de una sede.
  * @returns Hasta 20 variantes sugeridas; vacío si no hay productos, categorías o sugerencias disponibles.
  * @throws Si falla una consulta a Algolia o su respuesta no contiene resultados válidos.
  */
-export async function get_cart_suggestions(product_ids: string[], selected_store: Store | null = null): Promise<ProductHit[]> {
+export async function get_cart_suggestions(product_ids: string[], channel: SalesChannel, selected_store: Store | null = null): Promise<ProductHit[]> {
   const cart_product_ids = [...new Set(product_ids.filter(is_nonempty_string).map((product_id) => product_id.trim()))]
   if (cart_product_ids.length === 0) return []
   const cart_product_filters = cart_product_ids.map((product_id) => `product_id:${get_filter_value(product_id)}`)
   const { data: { results: category_results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
-      indexName: algolia_indices.main,
-      query: "",
+      indexName: get_product_indices(channel).main,
       filters: cart_product_filters.join(" OR "),
       facets: ["categories"],
       maxValuesPerFacet: 1000,
@@ -383,7 +490,7 @@ export async function get_cart_suggestions(product_ids: string[], selected_store
   if (!category_result || !("hits" in category_result) || !Array.isArray(category_result.hits)) throw new Error("Respuesta de categorías inválida.")
 
   const categories = Object.keys(category_result.facets?.categories ?? {})
-  return get_suggestions(categories, cart_product_ids, selected_store)
+  return get_suggestions(categories, cart_product_ids, channel, selected_store)
 }
 
 /**
@@ -410,10 +517,10 @@ export function can_decrement_item(item: CartItem, limits: CartQuantityLimits | 
  * Crea una línea del carrito a partir de un producto y la talla seleccionada.
  * @param product Producto que se agregará al carrito.
  * @param selected_size Talla seleccionada.
- * @param quantity Cantidad de unidades; por defecto, el mínimo B2C del producto.
+ * @param quantity Cantidad de unidades; por defecto, el mínimo del producto.
  * @returns Línea del carrito con el precio unitario calculado mediante get_product_unit_price().
  */
-export function create_cart_item(product: CartProduct, selected_size: string, quantity = product.b2c_min_order_quantity): CartItem {
+export function create_cart_item(product: CartProduct, selected_size: string, quantity = product.min_order_quantity): CartItem {
   return {
     id: get_cart_item_id(product.sku, selected_size),
     product_id: product.product_id,

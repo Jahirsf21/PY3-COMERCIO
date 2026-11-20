@@ -1,21 +1,25 @@
-import { useId } from "react"
+import { useId, useMemo } from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { ArrowUpDownIcon } from "lucide-react"
 import { useSortBy } from "react-instantsearch"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { algolia_indices } from "@/lib/algolia/algolia"
-
-const SORT_ITEMS = [
-  { label: "Relevancia", value: algolia_indices.main },
-  { label: "Precio: menor a mayor", value: algolia_indices.priceAsc },
-  { label: "Precio: mayor a menor", value: algolia_indices.priceDesc },
-];
+import { get_product_indices } from "@/lib/algolia/algolia"
+import { useChannel } from "@/lib/channel/channelContext"
 
 export function SortBySelect({ floating = false }: { floating?: boolean }) {
   const id = useId();
-  const { currentRefinement, options, refine } = useSortBy({ items: SORT_ITEMS });
+  const { channel } = useChannel();
+  const sort_items = useMemo(() => {
+    const indices = get_product_indices(channel);
+    return [
+      { label: "Relevancia", value: indices.main },
+      { label: "Precio: menor a mayor", value: indices.priceAsc },
+      { label: "Precio: mayor a menor", value: indices.priceDesc },
+    ];
+  }, [channel]);
+  const { currentRefinement, options, refine } = useSortBy({ items: sort_items });
 
   return (
     <div className={floating ? "" : "hidden flex-wrap items-center gap-2 lg:flex"}>
@@ -30,7 +34,7 @@ export function SortBySelect({ floating = false }: { floating?: boolean }) {
             id={id}
             aria-labelledby={`${id}-label ${id}-value`}
             render={
-              <Button className="h-10 w-full cursor-pointer gap-1.5 rounded-full px-4 text-xs shadow-lg hover:shadow-xl motion-reduce:transition-none" />
+              <Button className="h-10 w-full cursor-pointer gap-1.5 px-4 text-xs shadow-lg hover:shadow-xl motion-reduce:transition-none" />
             }
           >
             <ArrowUpDownIcon aria-hidden="true" className="size-3.5" />

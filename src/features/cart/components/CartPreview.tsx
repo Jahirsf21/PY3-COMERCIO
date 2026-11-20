@@ -3,10 +3,11 @@ import { ShoppingCartIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { get_item_subtotal } from "@/lib/cart/cart"
+import { get_cart_conditions_text, get_item_subtotal } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
 import { CartStatus } from "@/features/cart/components/CartStatus"
 import { format_price } from "@/lib/shared/utils"
+import { product_path, routes } from "@/lib/navigation/routes"
 
 export function CartPreview({ onClose }: { onClose: () => void }) {
   const { cart, subtotal, shipping, tax, total, can_checkout, item_validation } = useCart()
@@ -31,7 +32,7 @@ export function CartPreview({ onClose }: { onClose: () => void }) {
 
       {cart.length === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-8 text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-muted">
             <ShoppingCartIcon aria-hidden="true" className="size-6 text-muted-foreground" />
           </div>
           <h2 className="text-lg font-semibold">Tu carrito está vacío</h2>
@@ -52,13 +53,16 @@ export function CartPreview({ onClose }: { onClose: () => void }) {
                 />
                 <div className="min-w-0 flex-1">
                   <Link
-                    to={`/producto/${encodeURIComponent(item.product_id)}?${new URLSearchParams({ variante: item.sku, talla: item.selected_size })}`}
+                    to={product_path(item.product_id, { variante: item.sku, talla: item.selected_size })}
                     onClick={onClose}
                     className="rounded-sm font-medium leading-snug break-words hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {item.title}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">Talla: {item.selected_size}</p>
+                  {get_cart_conditions_text(item_validation[item.id]?.conditions ?? null) && (
+                    <p className="mt-1 text-xs text-muted-foreground">{get_cart_conditions_text(item_validation[item.id]?.conditions ?? null)}</p>
+                  )}
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <span className="text-xs text-muted-foreground">Cantidad: {item.quantity}</span>
                     <span className="break-words text-sm font-semibold">
@@ -96,7 +100,7 @@ export function CartPreview({ onClose }: { onClose: () => void }) {
         )}
         <div className="flex flex-col gap-2">
           <Link
-            to="/carrito"
+            to={routes.cart}
             onClick={onClose}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

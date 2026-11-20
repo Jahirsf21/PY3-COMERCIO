@@ -8,15 +8,21 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/toast"
 import { get_cart_add_quantity_limits, get_cart_add_quantity_message, get_cart_item_id, get_cart_quantity_limits, get_product_unit_price, is_valid_cart_quantity } from "@/lib/cart/cart"
 import { useCart } from "@/lib/cart/cartContext"
-import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
+import { useAuth } from "@/lib/auth/authContext"
+import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock, get_stores_with_stock } from "@/lib/catalog/catalog"
 import type { ProductHit, VariantsResult } from "@/lib/catalog/types"
 import { cn, format_price } from "@/lib/shared/utils"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
+import { get_available_quantity_text, get_store_unavailable_notice } from "@/lib/stores/stores"
+import { product_path } from "@/lib/navigation/routes"
 
 export function AddToCartDialog({ hit }: { hit: ProductHit }) {
+  const { user } = useAuth()
   const id = useId()
   const { cart, add_to_cart } = useCart()
   const { selected_store } = useStores()
+  const { channel } = useChannel()
   const [open, setOpen] = useState(false)
   const [result, setResult] = useState<VariantsResult>()
   const [selectedSku, setSelectedSku] = useState(hit.sku)
@@ -28,22 +34,22 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
     if (!open) return
     let active = true
 
-    get_product_variants(hit.product_id)
+    get_product_variants(hit.product_id, channel)
       .then((variants) => {
-        if (active) setResult({ productId: hit.product_id, variants, error: false })
+        if (active) setResult({ productId: hit.product_id, channel, variants, error: false })
       })
       .catch(() => {
-        if (active) setResult({ productId: hit.product_id, variants: [], error: true })
+        if (active) setResult({ productId: hit.product_id, channel, variants: [], error: true })
       })
 
     return () => { active = false }
-  }, [open, hit.product_id])
+  }, [open, hit.product_id, channel])
 
-  const isLoading = result?.productId !== hit.product_id
+  const isLoading = result?.productId !== hit.product_id || result.channel !== channel
   const variants = isLoading ? [] : result.variants
   const selectedVariant = variants.find((variant) => variant.sku === selectedSku) ?? variants[0]
   const preview = selectedVariant ?? hit
-  const locations = selectedVariant?.b2c_stock_by_location ?? []
+  const locations = selectedVariant?.stock_by_location ?? []
   const sizes = get_sizes_from_stock(locations)
   const availableSizes = sizes.filter((size) => {
     const limits = selectedVariant ? get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(locations, size, selected_store)) : null
@@ -57,6 +63,10 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
   const additionalLimits = get_cart_add_quantity_limits(limits, cartQuantity)
   const quantityToAdd = additionalLimits?.min_quantity ?? 0
   const limitMessage = selectedSize ? get_cart_add_quantity_message(limits, cartQuantity) : null
+  const isSizeAvailable = limits !== null && limits.max_quantity >= limits.min_quantity
+  const storeNotice = selected_store && selectedVariant && (selectedSize ? !isSizeAvailable : sizes.length > 0 && availableSizes === 0)
+    ? get_store_unavailable_notice(selected_store, get_stores_with_stock(locations, selectedSize, selectedVariant.min_order_quantity), Boolean(selectedSize))
+    : null
   const canAdd = Boolean(selectedVariant && selectedSize && is_valid_cart_quantity(quantityToAdd, additionalLimits) && !isSubmitting)
   const detailParams = new URLSearchParams({ variante: preview.sku })
   if (selectedSize) detailParams.set("talla", selectedSize)
@@ -74,7 +84,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedVariant || !selectedSize || !canAdd) return
+    if (user?.role === "ADMIN" || !selectedVariant || !selectedSize || !canAdd) return
     setIsSubmitting(true)
     setError(null)
 
@@ -97,6 +107,8 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
     }
   }
 
+  if (user?.role === "ADMIN") return null
+
   return (
     <div className="w-full">
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -107,7 +119,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
           <ShoppingCartIcon aria-hidden="true" />
           <span>Agregar<span className="hidden sm:inline"> al carrito</span></span>
         </DialogTrigger>
-        <DialogContent showCloseButton={false} className="flex max-h-[90dvh] flex-col overflow-hidden p-5 sm:max-w-lg sm:p-6 motion-reduce:animate-none">
+        <DialogContent showCloseButton={false} className="flex max-h-[90dvh] flex-col overflow-hidden p-5 motion-reduce:animate-none sm:max-w-xl sm:p-6 md:max-w-2xl lg:max-w-3xl">
           <DialogHeader className="shrink-0 pr-10">
             <DialogTitle>Agregar al carrito</DialogTitle>
             <DialogDescription>Elige el color y la talla del producto.</DialogDescription>
@@ -128,7 +140,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                     <p className="text-xs uppercase text-muted-foreground">{preview.brand}</p>
                     <p className="font-medium leading-snug">{preview.title}</p>
                     <Link
-                      to={`/producto/${encodeURIComponent(preview.product_id)}?${detailParams}`}
+                      to={`${product_path(preview.product_id)}?${detailParams}`}
                       aria-disabled={isSubmitting}
                       tabIndex={isSubmitting ? -1 : undefined}
                       className="inline-block rounded-sm text-sm underline underline-offset-4 outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -176,7 +188,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                             "cursor-pointer overflow-hidden rounded-lg border-2 bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
                             variant.sku === selectedVariant?.sku
                               ? "border-foreground"
-                              : "border-transparent hover:border-ring",
+                              : "border-transparent hover:opacity-80",
                           )}
                           onClick={() => {
                             setSelectedSku(variant.sku)
@@ -206,7 +218,7 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
                             aria-label={isAvailable ? size : `${size} · No disponible`}
                             disabled={!isAvailable || isSubmitting}
                             className={cn(
-                              "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:border-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+                              "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
                               selectedSize === size
                                 ? "border-foreground bg-foreground text-background"
                                 : "border-input",
@@ -223,18 +235,19 @@ export function AddToCartDialog({ hit }: { hit: ProductHit }) {
 
                 <div className="space-y-1">
                   <p className="text-2xl font-semibold">{format_price(get_product_unit_price(preview), preview.currency)}</p>
-                  {preview.on_discount && preview.b2c_discount && (
+                  {preview.on_discount && preview.discount && (
                     <p className="text-sm text-muted-foreground">
-                      <span className="line-through">{format_price(preview.b2c_price, preview.currency)}</span> · {preview.b2c_discount.percentage}% de descuento
+                      <span className="line-through">{format_price(preview.price, preview.currency)}</span> · {preview.discount.percentage}% de descuento
                     </p>
                   )}
                   {!isLoading && selectedVariant && (
                     <p className="text-sm text-muted-foreground">
                       {!selectedSize
                         ? sizes.length > 0 ? "Selecciona una talla para agregar el producto." : "Este color no tiene tallas disponibles."
-                        : limitMessage ?? (quantityToAdd > 1 ? `Se añadirán ${quantityToAdd} unidades.` : "Disponible")}
+                        : limitMessage ?? `${get_available_quantity_text(availableQuantity ?? 0, selected_store)}${quantityToAdd > 1 ? ` · Se añadirán ${quantityToAdd} unidades.` : ""}`}
                     </p>
                   )}
+                  {!isLoading && storeNotice && <p role="status" className="text-sm text-destructive">{storeNotice}</p>}
                 </div>
                 {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               </div>

@@ -3,13 +3,15 @@ import { useParams, useSearchParams } from "react-router-dom"
 import { CheckIcon, MapPinIcon, PackageCheckIcon, StarIcon } from "lucide-react"
 import { cn } from "cn"
 import type { VariantsResult } from "@/lib/catalog/types"
-import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock } from "@/lib/catalog/catalog"
+import { get_available_quantity_by_size, get_product_variants, get_sizes_from_stock, get_stores_with_stock } from "@/lib/catalog/catalog"
 import { get_cart_quantity_limits } from "@/lib/cart/cart"
 import { AddToCartForm } from "@/features/product-detail/AddToCartForm"
 import { ProductSuggestions } from "@/features/product-detail/ProductSuggestions"
 import { ShopHeader } from "@/components/shop-header"
 import { format_price } from "@/lib/shared/utils"
+import { useChannel } from "@/lib/channel/channelContext"
 import { useStores } from "@/lib/stores/storesContext"
+import { get_available_quantity_text, get_store_unavailable_notice } from "@/lib/stores/stores"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
 
 function ProductDetailSkeleton() {
@@ -32,6 +34,7 @@ function ProductDetailSkeleton() {
 
 export default function ProductDetailPage() {
   const { selected_store } = useStores()
+  const { channel } = useChannel()
   const { track_event } = useAnalytics()
   const tracked_view_sku = useRef<string | null>(null)
   const { productId = "" } = useParams();
@@ -53,27 +56,27 @@ export default function ProductDetailPage() {
   useEffect(() => {
     let active = true;
 
-    get_product_variants(productId)
+    get_product_variants(productId, channel)
       .then((variants) => {
-        if (active) setResult({ productId, variants, error: false });
+        if (active) setResult({ productId, channel, variants, error: false });
       })
       .catch(() => {
-        if (active) setResult({ productId, variants: [], error: true });
+        if (active) setResult({ productId, channel, variants: [], error: true });
       });
 
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [productId, channel]);
 
-  const isLoading = result?.productId !== productId;
+  const isLoading = result?.productId !== productId || result.channel !== channel;
   const variants = isLoading ? [] : result.variants;
   const requestedSku = searchParams.get("variante");
   const requestedSize = searchParams.get("talla");
   const selectedVariant =
     variants.find((variant) => variant.sku === requestedSku) ??
     variants[0];
-  const stockByLocation = selectedVariant?.b2c_stock_by_location ?? [];
+  const stockByLocation = selectedVariant?.stock_by_location ?? [];
   const sizes = get_sizes_from_stock(stockByLocation);
   const selectedSize =
     selectedVariant?.sku === requestedSku && requestedSize && sizes.includes(requestedSize)
@@ -122,11 +125,11 @@ export default function ProductDetailPage() {
     : 0;
   const selectedImage = images[selectedImageIndex] ?? images[0];
   const discount = selectedVariant.on_discount
-    ? selectedVariant.b2c_discount
+    ? selectedVariant.discount
     : undefined;
   const currentPrice = discount
-    ? selectedVariant.b2c_price * (1 - discount.percentage / 100)
-    : selectedVariant.b2c_price;
+    ? selectedVariant.price * (1 - discount.percentage / 100)
+    : selectedVariant.price;
   const availableSizes = sizes.filter((size) => {
     const limits = get_cart_quantity_limits(selectedVariant, get_available_quantity_by_size(stockByLocation, size, selected_store));
     return limits !== null && limits.max_quantity >= limits.min_quantity;
@@ -134,6 +137,10 @@ export default function ProductDetailPage() {
   const availableQuantity = selectedSize ? get_available_quantity_by_size(stockByLocation, selectedSize, selected_store) : 0;
   const quantityLimits = get_cart_quantity_limits(selectedVariant, availableQuantity);
   const isAvailable = quantityLimits !== null && quantityLimits.max_quantity >= quantityLimits.min_quantity;
+  const showsStoreNotice = selected_store !== null && (selectedSize ? !isAvailable : sizes.length > 0 && availableSizes === 0);
+  const storeNotice = showsStoreNotice && selected_store
+    ? get_store_unavailable_notice(selected_store, get_stores_with_stock(stockByLocation, selectedSize, selectedVariant.min_order_quantity), Boolean(selectedSize))
+    : null;
 
   return (
     <div className="min-h-dvh bg-background">
@@ -152,7 +159,7 @@ export default function ProductDetailPage() {
                     "aspect-square shrink-0 cursor-pointer overflow-hidden rounded-md border-2 bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                     index === selectedImageIndex
                       ? "border-foreground"
-                      : "border-transparent hover:border-ring",
+                      : "border-transparent hover:opacity-80",
                   )}
                   onClick={() => setSelection({
                     sku: selectedVariant.sku,
@@ -169,7 +176,7 @@ export default function ProductDetailPage() {
               ))}
             </div>
 
-            <figure className="aspect-square min-w-0 overflow-hidden rounded-lg bg-muted">
+            <figure className="aspect-square min-w-0 overflow-hidden rounded-2xl bg-muted">
               <img
                 src={selectedImage.url}
                 alt={selectedImage.alt}
@@ -184,7 +191,7 @@ export default function ProductDetailPage() {
               <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                 {selectedVariant.brand}
               </p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+              <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
                 {selectedVariant.title}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -192,13 +199,13 @@ export default function ProductDetailPage() {
               </p>
               <div className="mt-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xl font-semibold">
+                  <p className="font-heading text-2xl font-bold">
                     {format_price(currentPrice, selectedVariant.currency)}
                   </p>
                   {discount && (
                     <p className="text-sm text-muted-foreground">
                       <span className="line-through">
-                        {format_price(selectedVariant.b2c_price, selectedVariant.currency)}
+                        {format_price(selectedVariant.price, selectedVariant.currency)}
                       </span>{" "}
                       <span className="font-medium text-foreground">
                         {discount.percentage}% de descuento
@@ -233,7 +240,7 @@ export default function ProductDetailPage() {
                       "cursor-pointer overflow-hidden rounded-lg border-2 bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                       variant.sku === selectedVariant.sku
                         ? "border-foreground"
-                        : "border-transparent hover:border-ring",
+                        : "border-transparent hover:opacity-80",
                     )}
                     onClick={() => {
                       setSelection({ sku: variant.sku, imageIndex: 0 });
@@ -266,10 +273,10 @@ export default function ProductDetailPage() {
                     aria-pressed={selectedSize === size}
                     disabled={isSubmitting}
                     className={cn(
-                      "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:border-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                      "min-h-12 cursor-pointer rounded-md border px-2 py-2 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                       selectedSize === size
                         ? "border-foreground bg-foreground text-background"
-                        : "border-input",
+                        : "border-border",
                     )}
                     onClick={() => {
                       setSelection({ sku: selectedVariant.sku, imageIndex: selectedImageIndex });
@@ -284,19 +291,19 @@ export default function ProductDetailPage() {
 
             <div className={cn(
               "flex items-center gap-3 rounded-lg border p-4",
-              !selectedSize || isAvailable ? "border-input" : "border-destructive/40 bg-destructive/5",
+              (!selectedSize || isAvailable) && !storeNotice ? "border-border" : "border-destructive/40 bg-destructive/5",
             )}>
               <PackageCheckIcon aria-hidden="true" className="size-5 shrink-0" />
               <div>
                 <p className="font-medium">
-                  {!selectedSize ? "Selecciona una talla" : isAvailable ? "Disponible" : "No disponible"}
+                  {storeNotice ? "No disponible en esta tienda" : !selectedSize ? "Selecciona una talla" : isAvailable ? "Disponible" : "No disponible"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {!selectedSize
+                <p role={storeNotice ? "status" : undefined} className="text-sm text-muted-foreground">
+                  {storeNotice ?? (!selectedSize
                     ? "La disponibilidad depende del color y la talla."
                     : isAvailable
-                      ? `${availableQuantity} unidades disponibles`
-                      : "Prueba con otra talla o color."}
+                      ? get_available_quantity_text(availableQuantity ?? 0, selected_store)
+                      : "Prueba con otra talla o color.")}
                 </p>
               </div>
             </div>
@@ -312,16 +319,16 @@ export default function ProductDetailPage() {
           </aside>
         </div>
 
-        <section className="mt-10 border-t border-input pt-8 lg:mt-14 lg:pt-10">
+        <section className="mt-10 border-t border-border pt-8 lg:mt-14 lg:pt-10">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] xl:gap-16">
             <div>
-              <h2 className="text-2xl font-semibold">Descripción</h2>
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Descripción</h2>
               <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
                 {selectedVariant.description}
               </p>
             </div>
             <div>
-              <h2 className="text-2xl font-semibold">Especificaciones</h2>
+              <h2 className="text-2xl font-bold tracking-tight uppercase">Especificaciones</h2>
               <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
               <DetailRow label="Color" value={selectedVariant.facets.color} />
               <DetailRow label="SKU" value={selectedVariant.sku} />
@@ -330,10 +337,10 @@ export default function ProductDetailPage() {
               )}
               <DetailRow label="Materiales" value={selectedVariant.facets.materials.join(", ")} />
               <DetailRow label="Género" value={selectedVariant.facets.gender.join(", ")} />
-               {selectedVariant.b2c_min_order_quantity > 1 && (
-                 <DetailRow label="Compra mínima" value={`${selectedVariant.b2c_min_order_quantity} unidades`} />
+               {selectedVariant.min_order_quantity > 1 && (
+                 <DetailRow label="Compra mínima" value={`${selectedVariant.min_order_quantity} unidades`} />
                )}
-               <DetailRow label="Máximo por compra" value={`${selectedVariant.b2c_max_order_quantity} ${selectedVariant.b2c_max_order_quantity === 1 ? "unidad" : "unidades"}`} />
+               <DetailRow label="Máximo por compra" value={`${selectedVariant.max_order_quantity} ${selectedVariant.max_order_quantity === 1 ? "unidad" : "unidades"}`} />
               {selectedVariant.facets.recommend_use && (
                 <DetailRow
                   label="Uso recomendado"
@@ -345,7 +352,7 @@ export default function ProductDetailPage() {
           </div>
 
           {selectedSize && stockByLocation.length > 0 && (
-            <div className="mt-8 border-t border-input pt-8">
+            <div className="mt-8 border-t border-border pt-8">
               <h2 className="flex items-center gap-2 text-xl font-semibold">
                 <MapPinIcon aria-hidden="true" className="size-5" />
                 Disponibilidad por tienda
@@ -378,7 +385,7 @@ export default function ProductDetailPage() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[7rem_1fr] gap-3 border-b border-input/70 pb-3">
+    <div className="grid grid-cols-[7rem_1fr] gap-3 border-b border-border/70 pb-3">
       <dt className="font-medium">{label}</dt>
       <dd className="text-muted-foreground">{value}</dd>
     </div>

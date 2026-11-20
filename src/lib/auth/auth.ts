@@ -2,6 +2,7 @@ import { algolia_indices, search_client } from "@/lib/algolia/algolia"
 import type { Company, LoginCredentials, LoginResult, User, UserRecord, UserRole } from "@/lib/auth/types"
 import { get_filter_value, get_stored_json, is_nonempty_string, is_record } from "@/lib/shared/utils"
 
+const session_storage_key = "space-shop-session"
 const user_roles: UserRole[] = ["B2C", "B2B", "ADMIN"]
 
 /**
@@ -40,7 +41,7 @@ export async function hash_password(password: string): Promise<string> {
  * @param value Valor recibido.
  * @returns Empresa con nombre y cédula jurídica, o null si no es válida.
  */
-function parse_company(value: unknown): Company | null {
+export function parse_company(value: unknown): Company | null {
   if (!is_record(value) || !is_nonempty_string(value.name) || !is_nonempty_string(value.legal_id)) return null
   return { name: value.name, legal_id: value.legal_id }
 }
@@ -72,7 +73,6 @@ async function find_user_records(username: string): Promise<UserRecord[]> {
   const { data: { results } } = await search_client.searchWithHTTPInfo<UserRecord>({
     requests: [{
       indexName: algolia_indices.users,
-      query: "",
       filters: `username:${get_filter_value(username)}`,
       hitsPerPage: 1,
     }],
@@ -147,7 +147,7 @@ export function parse_session_user(value: unknown): User | null {
  * @returns Usuario de la sesión, o null si no hay una sesión válida o falla la lectura.
  */
 export function get_stored_session(): User | null {
-  return parse_session_user(get_stored_json("space-shop-session"))
+  return parse_session_user(get_stored_json(session_storage_key))
 }
 
 /**
@@ -157,10 +157,24 @@ export function get_stored_session(): User | null {
  */
 export function save_session(user: User | null): boolean {
   try {
-    if (user) window.localStorage.setItem("space-shop-session", JSON.stringify(user))
-    else window.localStorage.removeItem("space-shop-session")
+    if (user) window.localStorage.setItem(session_storage_key, JSON.stringify(user))
+    else window.localStorage.removeItem(session_storage_key)
     return true
   } catch {
     return false
   }
+}
+
+/**
+ * Obtiene las iniciales de un nombre completo para mostrarlas en el avatar.
+ * @param full_name Nombre completo del usuario.
+ * @returns Hasta dos iniciales en mayúscula.
+ */
+export function get_initials(full_name: string): string {
+  return full_name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toLocaleUpperCase("es-CR"))
+    .join("")
 }

@@ -1,26 +1,27 @@
-import { algolia_indices, search_client } from "@/lib/algolia/algolia"
+import { get_product_indices, search_client } from "@/lib/algolia/algolia"
 import { get_cart_quantity_limits, get_cart_validation_error, validate_cart_item } from "@/lib/cart/cart"
 import type { CartItem, CartQuantityLimits, CartValidationResult } from "@/lib/cart/types"
 import type { ProductHit, ProductRecord } from "@/lib/catalog/types"
+import type { SalesChannel } from "@/lib/channel/types"
 import { get_available_quantity_by_size } from "@/lib/catalog/stock"
 import { get_suggestions } from "@/lib/shared/suggestions"
 import type { Store } from "@/lib/stores/types"
 import { get_filter_value } from "@/lib/shared/utils"
 
-export { get_available_quantity_by_size, get_sizes_from_stock } from "@/lib/catalog/stock"
+export { get_available_quantity_by_size, get_sizes_from_stock, get_stores_with_stock } from "@/lib/catalog/stock"
 
 /**
- * Obtiene las variantes de un producto desde el índice principal de Algolia, sin usar la caché del cliente.
+ * Obtiene las variantes de un producto desde el índice principal del canal, sin usar la caché del cliente.
  * @param product_id Identificador del producto.
- * @returns Variantes del producto; vacío si no hay product_id o coincidencias.
+ * @param channel Canal de venta cuyo índice se consulta.
+ * @returns Variantes del producto en ese canal; vacío si no hay product_id o coincidencias.
  * @throws Si falla la consulta o la respuesta no contiene un arreglo de hits.
  */
-export async function get_product_variants(product_id: string): Promise<ProductHit[]> {
+export async function get_product_variants(product_id: string, channel: SalesChannel): Promise<ProductHit[]> {
   if (!product_id) return []
   const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
-      indexName: algolia_indices.main,
-      query: "",
+      indexName: get_product_indices(channel).main,
       filters: `product_id:${get_filter_value(product_id)}`,
       distinct: false,
       hitsPerPage: 50,
@@ -35,17 +36,17 @@ export async function get_product_variants(product_id: string): Promise<ProductH
  * Obtiene de Algolia los datos actuales de varias variantes, sin usar la caché del cliente, en el mismo orden recibido.
  * Si una variante ya no existe, usa otra variante del mismo producto; si el producto ya no existe, lo omite.
  * @param variants Productos y variantes que se desean consultar, por ejemplo los productos vistos recientemente.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @returns Variantes encontradas en el orden de la lista recibida; vacío si la lista está vacía.
  * @throws Si falla la consulta o la respuesta no contiene un arreglo de hits.
  */
-export async function get_products_by_variants(variants: { product_id: string; sku: string }[]): Promise<ProductHit[]> {
+export async function get_products_by_variants(variants: { product_id: string; sku: string }[], channel: SalesChannel): Promise<ProductHit[]> {
   const product_ids = [...new Set(variants.map((variant) => variant.product_id).filter((product_id) => product_id.trim()))]
   if (product_ids.length === 0) return []
   const product_filters = product_ids.map((product_id) => `product_id:${get_filter_value(product_id)}`)
   const { data: { results } } = await search_client.searchWithHTTPInfo<ProductRecord>({
     requests: [{
-      indexName: algolia_indices.main,
-      query: "",
+      indexName: get_product_indices(channel).main,
       filters: product_filters.join(" OR "),
       distinct: false,
       hitsPerPage: 200,
@@ -66,13 +67,14 @@ export async function get_products_by_variants(variants: { product_id: string; s
  * Consulta hasta 20 productos sugeridos que comparten alguna categoría con el producto mediante get_suggestions().
  * Excluye el producto actual de las sugerencias.
  * @param product Identificador y categorías del producto.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @param selected_store Tienda para comprobar las sugerencias; null usa el mayor stock de una sede.
  * @returns Hasta 20 variantes sugeridas; vacío si no hay categorías válidas o productos disponibles.
  * @throws Si falla la consulta a Algolia o su respuesta no contiene resultados válidos.
  */
-export async function get_product_suggestions(product: Pick<ProductRecord, "product_id" | "categories">, selected_store: Store | null = null): Promise<ProductHit[]> {
+export async function get_product_suggestions(product: Pick<ProductRecord, "product_id" | "categories">, channel: SalesChannel, selected_store: Store | null = null): Promise<ProductHit[]> {
   if (typeof product.product_id !== "string" || !product.product_id.trim() || !Array.isArray(product.categories)) return []
-  return get_suggestions(product.categories, [product.product_id.trim()], selected_store)
+  return get_suggestions(product.categories, [product.product_id.trim()], channel, selected_store)
 }
 
 /**
@@ -80,44 +82,44 @@ export async function get_product_suggestions(product: Pick<ProductRecord, "prod
  * @param product_id Identificador del producto.
  * @param sku SKU de la variante.
  * @param selected_size Talla seleccionada.
+ * @param channel Canal de venta cuyo índice se consulta.
  * @param selected_store Local elegido; null utiliza el mayor stock de una sola sede.
- * @returns Límites de cantidad, o null si la variante no existe, no se vende en B2C o sus reglas o stock son inválidos.
+ * @returns Límites de cantidad, o null si la variante no existe en el canal o sus reglas o stock son inválidos.
  * @throws Si falla la consulta de variantes o la respuesta no contiene un arreglo de hits.
  */
-export async function get_catalog_quantity_limits(product_id: string, sku: string, selected_size: string, selected_store: Store | null = null): Promise<CartQuantityLimits | null> {
-  const variants = await get_product_variants(product_id)
+export async function get_catalog_quantity_limits(product_id: string, sku: string, selected_size: string, channel: SalesChannel, selected_store: Store | null = null): Promise<CartQuantityLimits | null> {
+  const variants = await get_product_variants(product_id, channel)
   const variant = variants.find((product) => product.product_id === product_id && product.sku === sku)
-  if (!variant || !Array.isArray(variant.sales_channels) || !variant.sales_channels.includes("b2c")) return null
-  return get_cart_quantity_limits(variant, get_available_quantity_by_size(variant.b2c_stock_by_location, selected_size, selected_store))
+  if (!variant) return null
+  return get_cart_quantity_limits(variant, get_available_quantity_by_size(variant.stock_by_location, selected_size, selected_store))
 }
 
 /**
- * Valida las líneas del carrito con los datos actuales del catálogo.
+ * Valida las líneas del carrito con los datos actuales del catálogo del canal.
  * Por cada producto:
  * - Consulta sus variantes una sola vez para todas sus líneas.
  * - Comprueba el stock original de la talla en una única sede, sin sumar locales.
  * - Valida cada línea mediante validate_cart_item().
  * Si falla la consulta de un producto o su stock es inconsistente, marca sus líneas con get_cart_validation_error().
  * @param cart Líneas del carrito.
+ * @param channel Canal de venta cuyo índice se consulta; una variante que no existe en él no está disponible.
  * @param selected_store Tienda usada para validar todas las líneas; null utiliza el mayor stock de una sede.
  * @returns Resultado de validación de cada línea.
  *   original_item: línea recibida.
  *   item: línea con los datos actualizados.
  *   status / limits / message: estado, límites y mensaje de la validación.
  */
-export async function get_cart_validation(cart: CartItem[], selected_store: Store | null = null): Promise<CartValidationResult[]> {
+export async function get_cart_validation(cart: CartItem[], channel: SalesChannel, selected_store: Store | null = null): Promise<CartValidationResult[]> {
   const product_ids = [...new Set(cart.map((item) => item.product_id))]
-  const variant_responses = await Promise.allSettled(product_ids.map((product_id) => get_product_variants(product_id)))
+  const variant_responses = await Promise.allSettled(product_ids.map((product_id) => get_product_variants(product_id, channel)))
   const responses_by_product_id = new Map(product_ids.map((product_id, response_index) => [product_id, variant_responses[response_index]]))
   return cart.map((item) => {
     const variant_response = responses_by_product_id.get(item.product_id)
     if (!variant_response || variant_response.status === "rejected") return get_cart_validation_error(item)
     const variant = variant_response.value.find((product) => product?.product_id === item.product_id && product.sku === item.sku)
-    if (!variant || !Array.isArray(variant.sales_channels) || !variant.sales_channels.includes("b2c")) {
-      return validate_cart_item(item, variant, 0)
-    }
+    if (!variant) return validate_cart_item(item, variant, 0)
     try {
-      const available_quantity = get_available_quantity_by_size(variant.b2c_stock_by_location, item.selected_size, selected_store)
+      const available_quantity = get_available_quantity_by_size(variant.stock_by_location, item.selected_size, selected_store)
       if (available_quantity === null) return get_cart_validation_error(item)
       return validate_cart_item(item, variant, available_quantity)
     } catch {

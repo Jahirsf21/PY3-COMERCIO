@@ -14,6 +14,7 @@ import { format_price } from "@/lib/shared/utils"
 import amex_logo from "@/assets/cards/amex.svg"
 import mastercard_logo from "@/assets/cards/mastercard.svg"
 import visa_logo from "@/assets/cards/visa.svg"
+import { policy_path } from "@/lib/navigation/routes"
 
 const accepted_cards = [
   { name: "Visa", src: visa_logo },
@@ -116,7 +117,7 @@ export function PaymentForm({ order, on_result, on_error }: PaymentFormProps) {
   }
 
   return (
-    <section aria-labelledby="payment-form-title" className="min-w-0 rounded-xl border border-input bg-card p-5 sm:p-6">
+    <section aria-labelledby="payment-form-title" className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <CreditCardIcon aria-hidden="true" className="size-5 text-muted-foreground" />
@@ -201,8 +202,8 @@ export function PaymentForm({ order, on_result, on_error }: PaymentFormProps) {
         </Button>
         {/* Aviso informativo: los términos ya se aceptaron al generar la orden, por eso no hay otra casilla. */}
         <p className="mt-3 text-sm text-muted-foreground">
-          Al pagar, su compra queda sujeta a los <PolicyLink to="/politicas-y-ayuda#terminos-y-condiciones">Términos y Condiciones</PolicyLink> que
-          aceptó. Cambios y devoluciones hasta 30 días después de la entrega (<PolicyLink to="/politicas-y-ayuda#politica-de-devoluciones">ver política</PolicyLink>).
+          Al pagar, su compra queda sujeta a los <PolicyLink to={policy_path("terminos-y-condiciones")}>Términos y Condiciones</PolicyLink> que
+          aceptó. Cambios y devoluciones hasta 30 días después de la entrega (<PolicyLink to={policy_path("politica-de-devoluciones")}>ver política</PolicyLink>).
         </p>
       </form>
     </section>

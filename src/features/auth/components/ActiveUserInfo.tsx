@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { ChartColumnIcon, LogOutIcon, XIcon } from "lucide-react"
+import { ChartColumnIcon, ClipboardListIcon, LayoutDashboardIcon, LogOutIcon, XIcon } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,33 +7,23 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { toast } from "@/components/ui/toast"
 import { useAuth } from "@/lib/auth/authContext"
-import { get_role_label } from "@/lib/auth/auth"
+import { get_initials, get_role_label } from "@/lib/auth/auth"
 import type { User } from "@/lib/auth/types"
 import { cn } from "@/lib/shared/utils"
+import { routes } from "@/lib/navigation/routes"
 
 type ActiveUserInfoProps = {
   user: User
   className?: string
 }
 
-/**
- * Obtiene las iniciales de un nombre completo para mostrarlas en el avatar.
- * @param full_name Nombre completo del usuario.
- * @returns Hasta dos iniciales en mayúscula.
- */
-function get_initials(full_name: string): string {
-  return full_name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toLocaleUpperCase("es-CR"))
-    .join("")
-}
+const account_link_class = "flex h-10 w-full cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-muted"
 
 /**
  * Botón circular con las iniciales del usuario activo.
  * Al presionarlo despliega un panel lateral con el nombre completo y el tipo de usuario (B2C, B2B o ADMIN)
- * y el tipo de cliente; para un usuario B2B agrega la empresa. Incluye el acceso a la actividad ("Tu actividad", o "Métricas de uso" para el ADMIN) y el botón para cerrar sesión.
+ * y el tipo de cliente; para un usuario B2B agrega la empresa. Los clientes tienen acceso a sus pedidos y su actividad.
+ * En el catálogo, el administrador tiene acceso al panel desde este menú.
  * @param props Propiedades del componente.
  * @param props.user Usuario con sesión iniciada.
  * @param props.className Clases adicionales para el botón.
@@ -43,6 +33,7 @@ export function ActiveUserInfo({ user, className }: ActiveUserInfoProps) {
   const { logout } = useAuth()
   const location = useLocation()
   const initials = get_initials(user.full_name)
+  const is_admin = user.role === "ADMIN"
 
   /**
    * Cierra la sesión del usuario activo y confirma la acción con un aviso.
@@ -51,7 +42,7 @@ export function ActiveUserInfo({ user, className }: ActiveUserInfoProps) {
    */
   function handle_logout(): void {
     logout()
-    toast.add({ title: "Sesión cerrada", description: "Vuelve a iniciar sesión para usar tu carrito.", type: "success" })
+    toast.add({ title: "Sesión cerrada", description: "Vuelve a iniciar sesión para acceder a tu cuenta.", type: "success" })
   }
 
   return (
@@ -101,16 +92,38 @@ export function ActiveUserInfo({ user, className }: ActiveUserInfoProps) {
               </div>
             </div>
           </div>
-          <nav aria-label="Opciones de la cuenta" className="border-t border-input p-4">
-            <SheetClose
-              nativeButton={false}
-              render={<Link to="/analytics" aria-current={location.pathname === "/analytics" ? "page" : undefined} />}
-              className="flex h-10 w-full cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-muted"
-            >
-              <ChartColumnIcon aria-hidden="true" className="size-4" />
-              {user.role === "ADMIN" ? "Métricas de uso" : "Tu actividad"}
-            </SheetClose>
-          </nav>
+          {is_admin && location.pathname === routes.catalog && (
+            <nav aria-label="Opciones de la cuenta" className="border-t border-input p-4">
+              <SheetClose
+                nativeButton={false}
+                render={<Link to={routes.admin_orders} />}
+                className={account_link_class}
+              >
+                <LayoutDashboardIcon aria-hidden="true" className="size-4" />
+                Ir al panel
+              </SheetClose>
+            </nav>
+          )}
+          {!is_admin && (
+            <nav aria-label="Opciones de la cuenta" className="space-y-1 border-t border-input p-4">
+              <SheetClose
+                nativeButton={false}
+                render={<Link to={routes.orders} aria-current={location.pathname === routes.orders ? "page" : undefined} />}
+                className={account_link_class}
+              >
+                <ClipboardListIcon aria-hidden="true" className="size-4" />
+                Mis pedidos
+              </SheetClose>
+              <SheetClose
+                nativeButton={false}
+                render={<Link to={routes.analytics} aria-current={location.pathname === routes.analytics ? "page" : undefined} />}
+                className={account_link_class}
+              >
+                <ChartColumnIcon aria-hidden="true" className="size-4" />
+                Tu actividad
+              </SheetClose>
+            </nav>
+          )}
         </ScrollArea>
         <SheetFooter className="shrink-0 border-t border-input pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button type="button" variant="outline" onClick={handle_logout} className="h-10 w-full cursor-pointer gap-2">

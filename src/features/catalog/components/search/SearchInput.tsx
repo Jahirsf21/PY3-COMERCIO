@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react"
 import type { FocusEvent, KeyboardEvent } from "react"
 import { useSearchBox } from "react-instantsearch"
+import { SearchIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { RecentSearchesList } from "@/features/catalog/components/search/RecentSearchesList"
 import { useAnalytics } from "@/lib/analytics/analyticsContext"
@@ -63,12 +64,13 @@ export function SearchInput() {
 
   return (
     <div className="relative" onFocus={() => set_is_focused(true)} onBlur={handle_blur}>
+      <SearchIcon aria-hidden="true" className="pointer-events-none absolute start-4 top-[14px] size-4 text-muted-foreground" />
       <Input
         ref={input_ref}
         aria-label="Buscar productos"
         aria-controls={is_panel_open ? panel_id : undefined}
         aria-expanded={is_panel_open}
-        className="h-12 px-4 text-base transition-colors duration-150 hover:border-ring motion-reduce:transition-none md:text-base"
+        className="h-11 bg-card ps-10 pe-4 text-base transition-colors duration-150 motion-reduce:transition-none md:text-base"
         value={query}
         onChange={(e) => search(e.target.value)}
         onKeyDown={handle_key_down}

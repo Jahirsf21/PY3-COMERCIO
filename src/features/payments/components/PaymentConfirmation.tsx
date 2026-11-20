@@ -5,6 +5,7 @@ import { OrderCustomerInfo } from "@/features/orders/components/OrderCustomerInf
 import { OrderProducts } from "@/features/orders/components/OrderProducts"
 import { format_order_date, format_terms_acceptance_date } from "@/lib/orders/orders"
 import type { OrderDetails } from "@/lib/orders/types"
+import { order_path } from "@/lib/navigation/routes"
 
 type PaymentConfirmationProps = {
   order: OrderDetails
@@ -23,9 +24,9 @@ type PaymentConfirmationProps = {
 export function PaymentConfirmation({ order, show_order_link = true }: PaymentConfirmationProps) {
   return (
     <div className="space-y-6">
-      <section role="status" aria-labelledby="payment-confirmation-title" className="rounded-xl border border-input bg-card px-5 py-8 text-center sm:p-8">
+      <section role="status" aria-labelledby="payment-confirmation-title" className="rounded-2xl border border-border bg-card px-5 py-8 text-center sm:p-8">
         <CircleCheckIcon aria-hidden="true" className="mx-auto mb-4 size-12 text-primary" />
-        <h1 id="payment-confirmation-title" className="text-2xl font-semibold">Compra confirmada</h1>
+        <h1 id="payment-confirmation-title" className="text-3xl font-bold tracking-tight uppercase">Compra confirmada</h1>
         <p className="mt-2 text-lg font-medium">¡Pago aprobado!</p>
         <p className="mt-2 text-sm text-muted-foreground">Orden #{order.order_number}</p>
         <p className="mt-1 text-sm text-muted-foreground"><time dateTime={order.created_at}>{format_order_date(order.created_at)}</time></p>
@@ -43,7 +44,7 @@ export function PaymentConfirmation({ order, show_order_link = true }: PaymentCo
 
       <div className="flex flex-wrap justify-center gap-3">
         {show_order_link && (
-          <Link to={`/pedido/${encodeURIComponent(order.id)}`} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-input px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Link to={order_path(order.id)} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             Ver pedido
           </Link>
         )}

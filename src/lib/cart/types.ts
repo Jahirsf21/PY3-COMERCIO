@@ -9,12 +9,12 @@ export type CartProduct = {
   title: string
   image: ProductImage
   currency: string
-  b2c_price: number
-  b2c_discount?: Discount
+  price: number
+  discount?: Discount
   on_discount: boolean
-  b2c_min_order_quantity: number
-  b2c_max_order_quantity: number
-  b2c_step_quantity: number
+  min_order_quantity: number
+  max_order_quantity: number
+  step_quantity: number
 }
 
 /**
@@ -39,6 +39,15 @@ export type CartItem = {
 export type CartQuantityLimits = {
   min_quantity: number
   max_quantity: number
+  step_quantity: number
+}
+
+/**
+ * Condiciones de compra de una variante según el índice del canal, sin recortar por el stock
+ */
+export type CartQuantityConditions = {
+  min_order_quantity: number
+  max_order_quantity: number
   step_quantity: number
 }
 
@@ -68,6 +77,8 @@ export type CartSuggestionsResult = {
 export type CartItemValidation = {
   status: "pending" | "valid" | "unavailable" | "invalid_quantity" | "error"
   limits: CartQuantityLimits | null
+  conditions: CartQuantityConditions | null
+  available_quantity: number | null
   message?: string
 }
 

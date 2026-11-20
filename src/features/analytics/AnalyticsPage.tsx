@@ -11,6 +11,7 @@ import { useAnalytics } from "@/lib/analytics/analyticsContext"
 import { get_analytics_metrics, get_browser_analytics, get_daily_event_counts } from "@/lib/analytics/metrics"
 import type { AnalyticsEvent } from "@/lib/analytics/types"
 import { useAuth } from "@/lib/auth/authContext"
+import { routes } from "@/lib/navigation/routes"
 
 type AnalyticsSectionProps = {
   id: string
@@ -48,53 +49,67 @@ function AnalyticsSection({ id, title, description, summary, events }: Analytics
 }
 
 /**
- * Pantalla de actividad ("Tu actividad" para clientes, "Métricas de uso" para el ADMIN) con las métricas del usuario activo, calculadas con sus eventos registrados.
- * El ADMIN ve además el total de todos los usuarios y sesiones anónimas del navegador.
- * Sin sesión redirige al inicio de sesión, que vuelve a esta pantalla al iniciarla.
- * @returns Pantalla de métricas de uso, o la redirección al inicio de sesión.
+ * Contenido de métricas: «Tu actividad» para clientes y «Métricas del sitio» para el ADMIN.
+ * @returns Encabezado, aviso de almacenamiento y secciones de métricas.
  */
-export default function AnalyticsPage() {
+export function AnalyticsOverview() {
   const { user } = useAuth()
-  const location = useLocation()
   const { owner_id, events, storage_error } = useAnalytics()
   const is_admin = user?.role === "ADMIN"
   const browser_analytics = useMemo(() => (is_admin ? get_browser_analytics(owner_id, events) : null), [is_admin, owner_id, events])
 
-  if (!user) return <Navigate to="/login" replace state={{ from: location }} />
+  return (
+    <div className="space-y-10">
+      <div>
+        <h1 className={is_admin ? "text-2xl font-bold tracking-tight sm:text-3xl" : "text-3xl font-bold tracking-tight uppercase"}>{is_admin ? "Métricas del sitio" : "Tu actividad"}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {is_admin
+            ? "Resumen de la actividad registrada en este navegador: productos vistos, búsquedas, productos agregados al carrito y compras."
+            : "Resumen de tu actividad en la tienda: productos que viste, búsquedas, productos agregados al carrito y compras."}
+        </p>
+      </div>
+      {storage_error && (
+        <Alert variant="destructive">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertTitle>No pudimos guardar tu actividad reciente</AlertTitle>
+          <AlertDescription>Las métricas incluyen tu actividad de esta visita, pero podría perderse al recargar. Revisa los permisos de almacenamiento de tu navegador.</AlertDescription>
+        </Alert>
+      )}
+      <AnalyticsSection
+        id="analytics-own"
+        title="Tu actividad en la tienda"
+        description="Acciones registradas"
+        events={events}
+      />
+      {browser_analytics && (
+        <AnalyticsSection
+          id="analytics-browser"
+          title="Actividad de los usuarios"
+          summary={<UserTypesChart users_count={browser_analytics.users_count} guest_sessions_count={browser_analytics.guest_sessions_count} />}
+          events={browser_analytics.events}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Pantalla «Tu actividad» de los clientes; sin sesión redirige al inicio de sesión, que vuelve aquí al iniciarla.
+ * El ADMIN consulta sus métricas dentro del panel (/admin/analytics).
+ * @returns Pantalla de métricas, o la redirección correspondiente.
+ */
+export default function AnalyticsPage() {
+  const { user } = useAuth()
+  const location = useLocation()
+
+  if (!user) return <Navigate to={routes.login} replace state={{ from: location }} />
+  if (user.role === "ADMIN") return <Navigate to={routes.admin_analytics} replace />
 
   return (
     <div className="min-h-dvh bg-background">
       <ShopHeader sticky />
-      <main className="mx-auto w-full max-w-6xl space-y-10 px-4 py-8 lg:px-6">
-        <div>
-          <h1 className="text-2xl font-semibold">{is_admin ? "Métricas de uso" : "Tu actividad"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {is_admin
-              ? "Resumen de tu actividad y de la de todos los usuarios de la tienda: productos vistos, búsquedas, productos agregados al carrito y compras."
-              : "Resumen de tu actividad en la tienda: productos que viste, búsquedas, productos agregados al carrito y compras."}
-          </p>
-        </div>
-        {storage_error && (
-          <Alert variant="destructive">
-            <TriangleAlertIcon aria-hidden="true" />
-            <AlertTitle>No pudimos guardar tu actividad reciente</AlertTitle>
-            <AlertDescription>Las métricas incluyen tu actividad de esta visita, pero podría perderse al recargar. Revisa los permisos de almacenamiento de tu navegador.</AlertDescription>
-          </Alert>
-        )}
-        <AnalyticsSection
-          id="analytics-own"
-          title="Tu actividad en la tienda"
-          description="Acciones registradas"
-          events={events}
-        />
-        {browser_analytics && (
-          <AnalyticsSection
-            id="analytics-browser"
-            title="Actividad de los usuarios"
-            summary={<UserTypesChart users_count={browser_analytics.users_count} guest_sessions_count={browser_analytics.guest_sessions_count} />}
-            events={browser_analytics.events}
-          />
-        )}
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-6">
+        <AnalyticsOverview />
       </main>
     </div>
   )

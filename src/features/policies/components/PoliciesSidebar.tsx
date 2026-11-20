@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar"
 import { policies_index } from "@/lib/policies/policies"
 import { cn } from "@/lib/shared/utils"
+import { policy_path, routes } from "@/lib/navigation/routes"
 
 const policy_icons: Record<string, LucideIcon> = {
   "terminos-y-condiciones": FileTextIcon,
@@ -49,7 +50,7 @@ function PoliciesNavigation({ active_id, expanded_section_id, onSectionOpenChang
       <SidebarContent className="overflow-visible">
         <SidebarGroup className="p-3">
           <Link
-            to="/politicas-y-ayuda"
+            to={routes.policies}
             onClick={onNavigate}
             aria-current={active_id === "" ? "location" : undefined}
             className={cn(index_link_class, "mb-3 border border-input bg-background", active_id === "" ? "text-foreground" : "text-muted-foreground")}
@@ -73,7 +74,7 @@ function PoliciesNavigation({ active_id, expanded_section_id, onSectionOpenChang
                   >
                     <div className="flex items-center gap-1">
                       <Link
-                        to={`/politicas-y-ayuda#${section.id}`}
+                        to={policy_path(section.id)}
                         onClick={(event) => {
                           if (has_subsections && active_id === section.id && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
                             event.preventDefault()
@@ -105,7 +106,7 @@ function PoliciesNavigation({ active_id, expanded_section_id, onSectionOpenChang
                           {section.subsections.map((subsection) => (
                             <SidebarMenuSubItem key={subsection.id}>
                               <SidebarMenuSubButton
-                                render={<Link to={`/politicas-y-ayuda#${subsection.id}`} />}
+                                render={<Link to={policy_path(subsection.id)} />}
                                 onClick={onNavigate}
                                 size="sm"
                                 isActive={active_id === subsection.id}
