@@ -1,18 +1,18 @@
-# Laboratorio 5: Simulación de Analytics
+# Proyecto 3: Entorno B2B, Roles, Precios e Inventario
 
-Space Shop es un e-commerce de ropa, calzado y accesorios deportivos de marcas como Nike, Puma y Adidas. En este laboratorio se agregó a la tienda un registro de las acciones de cada persona, contenido personalizado a partir de ese historial y una página de métricas de uso. Todo se guarda en el navegador mediante `localStorage`, sin servicios externos, y los datos se generan únicamente con el uso real de la tienda.
+Space Shop es un e-commerce de ropa, calzado y accesorios deportivos de marcas como Nike, Puma y Adidas. En este proyecto la tienda se extendió para operar también como comercio **B2B (Business-to-Business)**: atiende a clientes personas y empresas con precios y condiciones de compra distintas, maneja inventario por sucursal, guarda órdenes completas en Algolia e incluye un panel para el administrador. Se mantienen todas las funcionalidades de los Proyectos I y II y de los laboratorios anteriores.
 
 **Curso:** IC-8063 Comercio Electrónico · Tecnológico de Costa Rica  
 **Profesor:** Ing. Joss Pecou Johnson  
-**Grupo:** 60  
+**Grupo:** 60
 
 ## Integrantes
 
-| Nombre | Carné |
-|---|---|
-| Deislher Sánchez Funez | 2023032794 |
+| Nombre                   | Carné      |
+| ------------------------ | ---------- |
+| Deislher Sánchez Funez   | 2023032794 |
 | Natalia Granados Rosales | 2021144286 |
-| Owen Smith Cerdas | 2024083328 |
+| Owen Smith Cerdas        | 2024083328 |
 
 ## Enlaces
 
@@ -21,75 +21,103 @@ Space Shop es un e-commerce de ropa, calzado y accesorios deportivos de marcas c
 
 ## Usuarios de prueba
 
-| Usuario | Contraseña | Rol | Notas |
-|---|---|---|---|
-| `maria.rojas` | `SpaceB2C#1` | B2C | Cliente persona física |
-| `carlos.mora` | `SpaceB2C#2` | B2C | Cliente persona física |
-| `compras.deportivacr` | `SpaceB2B#1` | B2B | Cliente persona jurídica |
-| `admin` | `SpaceAdmin#1` | ADMIN | Ve las métricas de todos los usuarios |
-| `sin.rol` | `SpaceNoRole#1` | SUPERVISOR | Rol inválido: sirve para probar el rechazo del inicio de sesión |
+El inicio de sesión es simulado y sirve para evaluar el comportamiento de cada rol. Los usuarios están en el índice de usuarios de Algolia, que guarda solo una versión cifrada (hash) de cada contraseña.
 
-## Eventos registrados
+| Usuario               | Contraseña      | Rol        | Notas                                                                         |
+| --------------------- | --------------- | ---------- | ----------------------------------------------------------------------------- |
+| `maria.rojas`         | `SpaceB2C#1`    | B2C        | Cliente persona física                                                        |
+| `carlos.mora`         | `SpaceB2C#2`    | B2C        | Segundo cliente, para comprobar que cada uno ve solo su carrito y sus pedidos |
+| `compras.deportivacr` | `SpaceB2B#1`    | B2B        | Cliente empresa: Deportiva CR S.A.                                            |
+| `admin`               | `SpaceAdmin#1`  | ADMIN      | Acceso al panel administrativo                                                |
+| `sin.rol`             | `SpaceNoRole#1` | SUPERVISOR | Rol inválido: sirve para probar el rechazo del inicio de sesión               |
 
-| Evento | Cuándo se registra | Información que se guarda |
-|---|---|---|
-| `login` | Al iniciar sesión correctamente | Identificador del usuario y su rol |
-| `search` | Cuando la persona termina de escribir en el buscador | El texto buscado |
-| `product_view` | Al abrir el detalle de un producto | Identificador, SKU, nombre y categorías |
-| `add_to_cart` | Al agregar un producto al carrito | Producto, talla, cantidad, precio y moneda |
-| `checkout_start` | Al entrar al proceso de pago | Cantidad de productos, unidades, total y moneda |
-| `purchase` | Cuando se aprueba el pago de una orden | Número de orden, cantidad de productos, total y moneda |
+También se puede usar la tienda sin iniciar sesión, como **invitado**. En ese caso compra con las condiciones B2C.
 
-Cada evento guarda un identificador propio, el tipo, la fecha y hora y los datos de la acción. La búsqueda solo se registra cuando la persona deja de escribir por un momento, con al menos dos caracteres y si el texto cambió respecto a la búsqueda anterior; así, una palabra escrita letra por letra cuenta como una sola búsqueda.
+## Roles y permisos
 
-## Estructura de los datos
+| Funcionalidad                                            | Invitado | B2C | B2B | ADMIN |
+| -------------------------------------------------------- | :------: | :-: | :-: | :---: |
+| Ver y buscar productos, elegir sucursal                  |    ✓     |  ✓  |  ✓  |   ✓   |
+| Agregar al carrito, pagar y cancelar un pedido pendiente |    ✓     |  ✓  |  ✓  |   —   |
+| Ver "Mis pedidos" y "Tu actividad"                       |    —     |  ✓  |  ✓  |   —   |
+| Ver todas las órdenes, con filtros y estadísticas        |    —     |  —  |  —  |   ✓   |
+| Ver y modificar precios, condiciones e inventario        |    —     |  —  |  —  |   ✓   |
+| Ver las métricas de todos los usuarios                   |    —     |  —  |  —  |   ✓   |
 
-Los datos se guardan por separado para cada persona. Quien usa la tienda sin iniciar sesión recibe automáticamente una sesión de invitado, de modo que su historial no se mezcla con el de ningún usuario.
+- Al iniciar sesión, el encabezado muestra un botón con las iniciales del usuario. Al pulsarlo se ven su nombre, su rol y su empresa (si tiene).
+- El administrador entra directamente al panel. Si intenta abrir el carrito o el pago, vuelve al catálogo.
+- Un usuario que no es administrador no puede entrar al panel (`/admin`).
 
-| Qué se guarda | Clave en `localStorage` | Máximo |
-|---|---|---|
-| Historial de eventos (del más antiguo al más reciente) | `space-shop-events:<usuario>` | Los 500 más recientes |
-| Productos vistos recientemente | `space-shop-viewed-products:<usuario>` | 10, sin repetir |
-| Búsquedas recientes | `space-shop-recent-searches:<usuario>` | 10, sin repetir |
+## Precios y condiciones B2B
 
-- Un producto o búsqueda repetidos no se duplican: pasan al primer lugar de la lista. Las búsquedas no distinguen mayúsculas de minúsculas.
-- Los productos vistos no guardan precio ni imagen; esos datos se consultan actualizados al mostrarlos.
-- Los datos guardados se validan antes de usarse y los registros dañados se descartan. Si el navegador no permite guardar, la tienda sigue funcionando con los datos de la visita actual y muestra un aviso.
+Cada canal tiene su propio catálogo en Algolia. La aplicación elige el catálogo según el rol del usuario, sin que nadie tenga que seleccionarlo.
 
-## Personalización
+| Condición                    | B2C                                                                      | B2B                                   |
+| ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------- |
+| Precio                       | De lista, con descuentos de temporada (10 % a 30 %) en algunos productos | 15 % menor que el precio B2C de lista |
+| Cantidad mínima por producto | 1                                                                        | **5**                                 |
+| Cantidad máxima por producto | 10 (5 en algunos productos)                                              | 100                                   |
+| Variantes disponibles        | 244                                                                      | 106 (18 exclusivas de B2B)            |
 
-1. **Vistos recientemente** (catálogo): los últimos productos abiertos, con imagen, precio y disponibilidad actualizados.
-2. **Recomendados para ti** (catálogo y carrito):
-   - Se ordenan las categorías de los productos vistos por frecuencia; en caso de empate gana la del producto visto más recientemente. Se ignoran categorías generales como "Hombre" o "Mujer".
-   - Se buscan hasta 20 productos de esas categorías y, si faltan, se completan con las tres búsquedas más recientes.
-   - Se excluyen los productos ya vistos y sus otras versiones (y, en el carrito, los que ya están en él), y solo se recomiendan productos disponibles en la sede seleccionada.
-3. **Búsquedas recientes**: al hacer clic en el buscador vacío se abre un panel con las últimas búsquedas. Elegir una la repite, la registra de nuevo y la sube al primer lugar. Se puede usar con el teclado (flechas y Escape).
+**Condición comercial elegida:** compra mínima de 5 unidades por producto. Una empresa compra para revender o para equipar a su personal, así que el volumen mínimo es habitual en la venta al por mayor y justifica el precio más bajo.
 
-Las secciones personalizadas del catálogo solo aparecen cuando hay historial y la persona está en la vista inicial: sin búsqueda activa, sin filtros y en la primera página.
+Justo antes de crear la orden, la aplicación vuelve a consultar en Algolia el precio de cada producto. Así, el precio que ve el usuario siempre es el mismo que queda guardado en la orden.
 
-## Métricas de uso
+## Multi-inventario
 
-Disponible solo con sesión iniciada, desde el panel **Mi cuenta** (botón con las iniciales del usuario en el encabezado). El enlace se llama **Tu actividad** para clientes y **Métricas de uso** para el administrador.
+La tienda tiene cuatro sucursales: **Tienda Escazú** y **Tienda San José** (San José), y **Tienda Guápiles** y **Tienda Limón** (Limón). Cada producto guarda en Algolia sus unidades por sucursal y por talla.
 
-| Métrica | Qué muestra |
-|---|---|
-| Productos visualizados | Veces que se abrió el detalle de un producto y cantidad de productos distintos |
-| Búsquedas realizadas | Cantidad de búsquedas |
-| Productos agregados al carrito | Veces que se agregó algo al carrito y unidades totales |
-| Compras realizadas | Compras completadas con pago aprobado |
+- La sucursal se elige en el selector **Tienda** del encabezado o en el checkout.
+- El detalle del producto y el carrito muestran las unidades disponibles en la sucursal elegida. Las unidades nunca se suman entre sucursales.
+- Al cambiar de sucursal, el carrito se ajusta al nuevo stock y avisa qué cambió en el aviso **"Actualizamos tu carrito"**.
+- No se puede comprar más de lo que hay en la sucursal. La sucursal queda guardada en la orden.
 
-- El gráfico **Actividad por día** muestra los últimos siete días con un color por tipo de acción, una leyenda, el detalle al pasar el cursor y la opción **Ver datos en tabla**.
-- Cada usuario ve solo sus propias métricas. Los invitados que intentan abrir la página son redirigidos al inicio de sesión, aunque su actividad se sigue registrando.
-- El administrador ve además **Actividad de los usuarios**: la actividad de todos los usuarios que han usado la tienda en ese navegador, con un gráfico de usuarios registrados y no registrados con actividad, sus métricas y su gráfico por día.
+## Órdenes
+
+Cada orden guarda número, fecha, usuario, rol, datos del cliente, empresa (B2B), productos, cantidades, precio aplicado, sucursal, subtotal, IVA (13 %), envío, total, canal, reglas de cantidad, estado de la orden y estado del pago.
+
+- Las órdenes se guardan primero en el navegador y se sincronizan con el índice de órdenes de Algolia. Si no hay conexión, se envían solas cuando vuelve.
+- Los clientes las consultan en **Mi cuenta → Mis pedidos** y solo ven las suyas.
+- El envío cuesta ₡3 000. Es gratis desde ₡35 000 o si se retira en tienda.
+
+## Panel administrativo
+
+Disponible solo para el rol ADMIN. Tiene cuatro secciones:
+
+| Sección        | Qué permite                                                                                                                                                                 |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Órdenes**    | Ver todas las órdenes, buscarlas por número, destinatario o empresa, filtrarlas por tipo de cliente, sucursal y estados, y ver estadísticas. El detalle es de solo lectura. |
+| **Productos**  | Ver los precios y las condiciones de compra de ambos canales, uno al lado del otro, y editarlos.                                                                            |
+| **Inventario** | Consultar y modificar el stock por sucursal y talla.                                                                                                                        |
+| **Analytics**  | Ver las métricas de uso de todos los usuarios del navegador.                                                                                                                |
+
+Antes de guardar un cambio, la aplicación comprueba que nadie haya modificado ese dato mientras el administrador editaba. Cada intento queda registrado en un historial.
+
+## Índices de Algolia
+
+| Índice                | Contenido                                                                                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Productos (B2C y B2B) | Catálogo de cada canal: precios, condiciones de compra e inventario por sucursal y talla. Incluye réplicas para ordenar por precio. |
+| Usuarios              | Usuarios de prueba, rol, empresa (B2B) y contraseña cifrada.                                                                        |
+| Órdenes               | Órdenes generadas durante el proceso de compra.                                                                                     |
+
+En el navegador (`localStorage`) se guardan la sesión, el carrito, la sucursal elegida, una copia de las órdenes y el historial de analytics de cada usuario.
+
+## Analytics y personalización (Laboratorio 5)
+
+Se mantiene el registro de eventos (`login`, `search`, `product_view`, `add_to_cart`, `checkout_start` y `purchase`), las secciones **Vistos recientemente** y **Recomendados para ti**, las búsquedas recientes y las métricas de uso. Los clientes las ven en **Tu actividad** y el administrador en **Analytics**.
 
 ## Cómo verificarlo
 
-Abrir las herramientas de desarrollador (Application → Local Storage) y revisar la clave `space-shop-events:<usuario>` tras cada acción:
-
-1. **Inicio de sesión** → aparece un evento `login` con el usuario y su rol.
-2. **Búsqueda** → escribir "Nike" y esperar: se registra un único evento `search`.
-3. **Vista de producto** → evento `product_view` y el producto aparece en `space-shop-viewed-products:<usuario>`.
-4. **Agregar al carrito** → evento `add_to_cart` con producto, talla, cantidad, precio y moneda.
-5. **Checkout y compra** → evento `checkout_start` y, al aprobar el pago, `purchase` con el número de orden y el total.
-6. **Personalización** → tras ver varios productos de una categoría (p. ej. Running), la página principal del catálogo muestra "Vistos recientemente" y "Recomendados para ti".
-7. **Métricas** → desde Mi cuenta, "Tu actividad" o "Métricas de uso" muestra la actividad del usuario.
+1. **Inicio de sesión B2C:** entrar con `maria.rojas`. El encabezado muestra sus iniciales y el rol B2C.
+2. **Inicio de sesión B2B:** entrar con `compras.deportivacr`. El panel de la cuenta muestra la empresa Deportiva CR S.A.
+3. **Inicio de sesión Admin:** entrar con `admin`. Se abre el panel administrativo.
+4. **Rol inválido:** entrar con `sin.rol`. Aparece el aviso "Usuario sin rol válido".
+5. **Precio B2C vs. B2B:** abrir el mismo producto con cada usuario. Por ejemplo, la Nike G.T. Cut 4 (Celeste) cuesta ₡49 974 en B2C y ₡42 478 en B2B.
+6. **Condición B2B:** como B2B, intentar agregar menos de 5 unidades. La aplicación no lo permite y avisa "Compra mínima: 5 unidades".
+7. **Selección de sucursal:** cambiar la tienda en el encabezado. La disponibilidad cambia y el carrito se ajusta.
+8. **Validación de inventario:** pedir más unidades de las disponibles. La aplicación limita la cantidad y explica por qué.
+9. **Orden B2C:** completar una compra con `maria.rojas` y revisarla en **Mis pedidos**.
+10. **Orden B2B:** completar una compra con `compras.deportivacr`. La orden muestra la empresa, el precio B2B y la sucursal.
+11. **Consulta administrativa:** con `admin`, abrir **Órdenes** y filtrar por tipo de cliente o sucursal.
+12. **Restricción entre roles:** con un cliente, entrar a `/admin`. La aplicación lo devuelve al catálogo. Con `admin`, intentar abrir el carrito: también vuelve al catálogo.
